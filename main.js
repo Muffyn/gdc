@@ -1,9 +1,14 @@
-var canvas, ctx;
+/* GDC gameeeeeee
+TODO: organize this mess
+TODO: finish the game
+*/
+
+var canvas, ctx; //TODO: clean up these random globals?
 var keysDown = [];
 var rectList = [];
 var active;
 
-class Rectangle {
+class Rectangle { //TODO: move to separate file
 	constructor(x, y, width, height, speed) {
 		this.x = x;
 		this.y = y;
@@ -16,6 +21,22 @@ class Rectangle {
 		this.color = getRandomColor();
 		this.inAir = false;
 	}
+	setX(x) {
+		if (x < 0) this.x = 0;
+		else if (x + this.width > canvas.width) this.x = canvas.width - this.width;
+		else this.x = x;
+		}
+	getX() { return this.x; }
+	setY(y) {
+		if (y < 0) this.y = 0;
+		else if (y + this.height > canvas.height) this.y = canvas.height - this.height;
+	 	else this.y = y;
+	}
+	getY() { return this.y; }
+	setWidth(w) { if (w > 0) this.width = w; }
+	getWidth() { return this.width; }
+	setHeight(h) { if (h > 0) this.height = h; }
+	getHeight() { return this.height; }
 
 	checkCollision() {
 		for (var i = 0; i < rectList.length; i++) {
@@ -29,7 +50,7 @@ class Rectangle {
 		return false;
 	}
 
-	move() {
+	move() { //TODO: convert to actual physics LOL
 
 
 		//check collision with rectList
@@ -57,7 +78,7 @@ class Rectangle {
 	  } else {
 				if (this.y > other.y) { //touching ceiling
 					console.log('Touched ceiling!' + this.y + other.y);
-					this.y = other.y + other.height;
+					this.setY(other.y + other.height);
 					this.ySpeed = 0;
 				} else { //on ground
 					this.touchGround(other);
@@ -76,40 +97,26 @@ class Rectangle {
 		if (keysDown[0] === 1) { //left
 			other = (new Rectangle (this.x - this.xSpeed, this.y, this.width, this.height)).checkCollision();
 			if (other !== false) this.x = other.x + other.width;
-			else this.x -= this.xSpeed;
+			else this.setX(this.x - this.xSpeed);
 		}
 		if (keysDown[2] === 1) { //right
 			other = (new Rectangle (this.x + this.xSpeed, this.y, this.width, this.height)).checkCollision();
 			if (other !== false) this.x = other.x - this.width;
-			else this.x += this.xSpeed;
+			else this.setX(this.x + this.xSpeed);
 		}
 
 		if (this.inAir === true) {
-			this.y += this.ySpeed;
+			this.setY(this.y + this.ySpeed);
 		}
 
-		//prevent exiting screen
-		if (this.x + this.height > canvas.width)
-			this.x = canvas.width - this.width;
-		if (this.x < 0)
-			this.x = 0;
-		if (this.y + this.height > canvas.height) {
-			this.y = canvas.height - this.height;
-			this.inAir = false;
-		}
-		if (this.y < 0) {
-			this.y = 0;
-			this.ySpeed = 0;
-		}
-
-		if (this.checkCollision()) {
+		if (this.checkCollision()) { //TODO: figure out what to do when this happens :s Currently happens when you hit a corner or a block gets inside of you
 			console.log('p1 is stuck in a rect at ' + this.checkCollision().x + ", " + this.checkCollision().y);
 		}
 
 	}
-  
+
   touchGround(other) {
-    this.y = other.y - this.height;
+    this.setY(other.y - this.height);
     this.ySpeed = 0;
     this.inAir = false;
     this.gravity = 0;
@@ -123,7 +130,11 @@ class Editor {
 		this.offsetY = 0;
 	}
 
-	move() {
+	move() { //TODO: refactor mousemove to come up here for move() and resize()
+
+	}
+
+	sendElementToTop() { //TODO: figure out how to send rectangle to top
 
 	}
 }
@@ -141,7 +152,9 @@ window.onload = function() {
 	document.addEventListener("mousedown", mousedown);
 	document.addEventListener("mousemove", mousemove);
 	document.addEventListener("mouseup", mouseup);
-	drawGridofRects();
+	document.addEventListener("dblclick", dblclick);
+
+	drawGridofRects(); //TODO: clean this up
 
 	setInterval(main, 1/60 * 1000);
 }
@@ -182,7 +195,7 @@ function drawGridofRects() {
 	rectList.push(new Rectangle(canvas.width - canvas.width / 3, 140, canvas.width / 3, 10));
 }
 
-function drawBG() {
+function drawBG() { //TODO: find a bg that actually works
 	var img =  document.getElementById('grass');
   var pat = ctx.createPattern(img, 'repeat');
   ctx.rect(0, 0, canvas.width, canvas.height);
@@ -192,12 +205,12 @@ function drawBG() {
 
 function drawPlayer() {
 	if (p1.dir === 0) {
-		//ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
-    ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
+		ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
+    //ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
   }
 	else if (p1.dir === 1 || p1.dir === undefined) {
-		//ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
-    ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
+		ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
+    //ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
   }
 
 }
@@ -208,6 +221,7 @@ function keydown(e) {
 	if (e.keyCode === 38) keysDown[1] = 1;
 	if (e.keyCode === 39){ keysDown[2] = 1; p1.dir = 1; }
 	if (e.keyCode === 40) keysDown[3] = 1;
+	if (e.keyCode === 16) keysDown[4] = 1; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.xSpeed += 1;
 	if (e.keyCode === 189 && p1.xSpeed > 1) p1.xSpeed -= 1;
@@ -219,39 +233,80 @@ function keyup(e) {
 	if (e.keyCode === 38) keysDown[1] = 0;
 	if (e.keyCode === 39) keysDown[2] = 0;
 	if (e.keyCode === 40) keysDown[3] = 0;
+	if (e.keyCode === 16) keysDown[4] = 0; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.speed += 1;
 	if (e.keyCode === 189 && p1.speed > 1) p1.speed -= 1;
 
 }
 
-function click(e) { /*
-	console.log('Clicked at ' + e.clientX + ', ' + e.clientY);
-	rectList.push(new Rectangle((e.clientX - canvas.offsetLeft) - 5, (e.clientY - canvas.offsetTop) - 5, 10, 10));
-*/
+function click(e) {
 }
 
 function mousedown(e) {
 	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision()
 	if (other !== false) {
-		console.log('mousedown at ' + (e.clientX - canvas.offsetLeft) + ', ' + (e.clientY - canvas.offsetTop));
-		if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) < other.height / 4) { //clicked in top 4th of rect
-			console.log('clicked top edge');
-			editor.active = other;
-		}
+		editor.active = other;
+		editor.sendElementToTop();
+		editor.offsetLeft = e.clientX - canvas.offsetLeft - other.x;
+		editor.offsetTop = e.clientY - canvas.offsetTop - other.y;
+		editor.side = "";
+		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) editor.side = editor.side.concat("left");
+		if (Math.abs(other.x + other.width - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) editor.side = editor.side.concat("right");
+		if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) < other.height / 4) editor.side = editor.side.concat("top");
+		if (Math.abs(other.y + other.height - (e.clientY - canvas.offsetTop)) > other.height * 3 / 4) editor.side = editor.side.concat("bottom");
+		if (editor.side = "") editor.side = "middle";
+		console.log(editor.side);
 	}
 }
 
 function mousemove(e) {
-	editor.active.y = e.clientY - canvas.offsetTop;
-	editor.active.x = e.clientX - canvas.offsetLeft;
-  console.log('a');
-  if (p1.checkCollision() !== false) {
-      p1.touchGround(p1.checkCollision());
-      
-    }
+	if (editor.active !== false) { //currently dragging something
+		if (keysDown[4]) { //shift clicked
+			//anchors right edge, changes width
+
+				var dx = editor.prevX - e.clientX;
+
+				editor.active.setWidth(editor.active.width + dx);
+				editor.active.setX(e.clientX - canvas.offsetLeft - editor.offsetLeft); //TODO: make it not drag when width is at its lowest
+			//}
+			//anchors bottom edge, changes height
+
+				var dy = editor.prevY - e.clientY;
+				editor.active.setY(e.clientY - canvas.offsetTop - editor.offsetTop);
+				editor.active.setHeight(editor.active.height + dy);
+			//}
+		} else { //regular click
+			editor.active.setY(e.clientY - canvas.offsetTop - editor.offsetTop);
+			editor.active.setX(e.clientX - canvas.offsetLeft - editor.offsetLeft);
+  	}
+
+  	if (p1.checkCollision() !== false) {
+      	p1.touchGround(p1.checkCollision());
+  	}
+
+		//set values for later
+		editor.prevX = e.clientX;
+		editor.prevY = e.clientY;
+	}
 }
 
 function mouseup(e) {
 	editor.active = false;
+}
+
+function dblclick(e) {
+			console.log('double clicked!');
+	if (e.clientY - canvas.offsetTop < editor.active.y) {
+		var dy =  e.clientY - (e.clientY - canvas.offsetTop - editor.offsetTop);
+		editor.active.y = e.clientY - canvas.offsetTop - editor.offsetTop;
+		editor.active.height += dy;
+
+	}
+	editor.active.width = e.clientX - canvas.offsetLeft - editor.offsetLeft;
+
+	if (p1.checkCollision() !== false) {
+			p1.touchGround(p1.checkCollision());
+
+		}
 }
