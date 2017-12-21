@@ -1,5 +1,6 @@
 var canvas, ctx;
-var keysDown = []
+var keysDown = [];
+var rectList = [];
 var active;
 
 class Rectangle {
@@ -11,7 +12,7 @@ class Rectangle {
 		this.xSpeed = speed;
 		this.ySpeed = 0;
 		this.jumpHeight = 8;
-		this.gravity = .5;
+		this.gravity = 0.5;
 		this.color = getRandomColor();
 		this.inAir = false;
 	}
@@ -42,7 +43,7 @@ class Rectangle {
 		if (keysDown[1] === 1 && this.inAir === false) {
 			this.inAir = true;
 			this.ySpeed = -this.jumpHeight;
-			this.gravity = .5;
+			this.gravity = 0.5;
 		}
 
 		var other;
@@ -52,37 +53,33 @@ class Rectangle {
 
 		if (other === false) {
 			this.inAir = true;
-			this.gravity = .5;
+			this.gravity = 0.5;
 	  } else {
 				if (this.y > other.y) { //touching ceiling
 					console.log('Touched ceiling!' + this.y + other.y);
 					this.y = other.y + other.height;
 					this.ySpeed = 0;
 				} else { //on ground
-					console.log('Touched ground!' + this.y + " " + other.y);
-					this.y = other.y - this.height;
-					this.inAir = false;
-					this.ySpeed = 0;
-					this.gravity = 0;
+					this.touchGround(other);
 				}
 			}
 		} else {
-			other = (new Rectangle (this.x, this.y + .1, this.width, this.height)).checkCollision();
+			other = (new Rectangle (this.x, this.y + 0.1, this.width, this.height)).checkCollision();
 			if (other === false) {
 				console.log('Starting to fall');
 				this.inAir = true;
-				this.gravity = .1;
+				this.gravity = 0.5;
 		  }
 
 		}
 
 		if (keysDown[0] === 1) { //left
-			var other = (new Rectangle (this.x - this.xSpeed, this.y, this.width, this.height)).checkCollision();
+			other = (new Rectangle (this.x - this.xSpeed, this.y, this.width, this.height)).checkCollision();
 			if (other !== false) this.x = other.x + other.width;
 			else this.x -= this.xSpeed;
 		}
 		if (keysDown[2] === 1) { //right
-			var other = (new Rectangle (this.x + this.xSpeed, this.y, this.width, this.height)).checkCollision();
+			other = (new Rectangle (this.x + this.xSpeed, this.y, this.width, this.height)).checkCollision();
 			if (other !== false) this.x = other.x - this.width;
 			else this.x += this.xSpeed;
 		}
@@ -110,6 +107,13 @@ class Rectangle {
 		}
 
 	}
+  
+  touchGround(other) {
+    this.y = other.y - this.height;
+    this.ySpeed = 0;
+    this.inAir = false;
+    this.gravity = 0;
+  }
 }
 
 class Editor {
@@ -125,7 +129,6 @@ class Editor {
 }
 
 var p1 = new Rectangle(20, 20, 40, 40, 1);
-var rectList = [];
 var editor = new Editor();
 
 window.onload = function() {
@@ -188,10 +191,14 @@ function drawBG() {
 }
 
 function drawPlayer() {
-	if (p1.dir === 0)
-		ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
-	else if (p1.dir === 1 || p1.dir === undefined)
-		ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
+	if (p1.dir === 0) {
+		//ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
+    ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
+  }
+	else if (p1.dir === 1 || p1.dir === undefined) {
+		//ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
+    ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
+  }
 
 }
 
@@ -237,7 +244,12 @@ function mousedown(e) {
 
 function mousemove(e) {
 	editor.active.y = e.clientY - canvas.offsetTop;
-	editor.active.x = e.clientX - canvas.offsetLeft
+	editor.active.x = e.clientX - canvas.offsetLeft;
+  console.log('a');
+  if (p1.checkCollision() !== false) {
+      p1.touchGround(p1.checkCollision());
+      
+    }
 }
 
 function mouseup(e) {
