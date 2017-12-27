@@ -10,11 +10,11 @@ var active;
 
 class Rectangle { //TODO: move to separate file
 	constructor(x, y, width, height, speed) {
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
-		this.xSpeed = speed;
+		this.x = x || 0;
+		this.y = y || 0;
+		this.width = width || 10;
+		this.height = height || 10;
+		this.xSpeed = speed || 1;
 		this.ySpeed = 0;
 		this.jumpHeight = 8;
 		this.gravity = 0.5;
@@ -96,11 +96,17 @@ class Rectangle { //TODO: move to separate file
 
 		if (keysDown[0] === 1) { //left
 			other = (new Rectangle (this.x - this.xSpeed, this.y, this.width, this.height)).checkCollision();
-			if (other !== false) this.x = other.x + other.width;
+			if (other !== false) this.setX(other.x + other.width);
+			else this.setX(this.x - this.xSpeed);
+			other = (new Rectangle (this.x - this.xSpeed, this.y + this.ySpeed, this.width, this.height)).checkCollision();
+			if (other !== false) this.setX(other.x + other.width);
 			else this.setX(this.x - this.xSpeed);
 		}
 		if (keysDown[2] === 1) { //right
 			other = (new Rectangle (this.x + this.xSpeed, this.y, this.width, this.height)).checkCollision();
+			if (other !== false) this.x = other.x - this.width;
+			else this.setX(this.x + this.xSpeed);
+			other = (new Rectangle (this.x + this.xSpeed, this.y + this.ySpeed, this.width, this.height)).checkCollision();
 			if (other !== false) this.x = other.x - this.width;
 			else this.setX(this.x + this.xSpeed);
 		}
@@ -126,12 +132,72 @@ class Rectangle { //TODO: move to separate file
 class Editor {
 	constructor() {
 		this.active = false;
-		this.offsetX = 0;
-		this.offsetY = 0;
 	}
 
-	move() { //TODO: refactor mousemove to come up here for move() and resize()
+	setActive(other, e) {
+		this.active = other;
+		this.sendElementToTop();
+		this.offsetLeft = e.clientX - canvas.offsetLeft - other.x;
+		this.offsetTop = e.clientY - canvas.offsetTop - other.y;
+		this.side = "";
+		if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) < other.height / 4) this.side = this.side.concat("top");
+		else if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) > other.height * 3/ 4) this.side = this.side.concat("bottom");
+		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) this.side = this.side.concat("left");
+		else if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) this.side = this.side.concat("right");
+		else if (this.side === "") this.side = "middle";
+		console.log(this.side);
+	}
 
+	move(e) { //TODO: come up with more elegant way to resize
+		if (keysDown[4]) { //shift clicked
+			this.resize(e)
+		} else {
+			this.active.setX(e.clientX - canvas.offsetLeft - this.offsetLeft);
+			this.active.setY(e.clientY - canvas.offsetTop - this.offsetTop);
+
+			//set values for later
+			this.prevX = e.clientX;
+			this.prevY = e.clientY;
+		}
+
+	}
+
+	resize(e) {
+
+		if (this.side.indexOf("left") !== -1) { //anchors right edge, changes width
+			var dx = this.prevX - e.clientX;
+			this.active.setWidth(this.active.width + dx);
+			this.active.setX(e.clientX - canvas.offsetLeft - this.offsetLeft); //TODO: make it not drag when width is at its lowest
+		}
+
+		if (editor.side.indexOf("right") !== -1) { //anchors left edge, changes width
+			var dx = this.prevX - e.clientX;
+			this.active.setWidth(this.active.width - dx);
+		}
+
+		if (editor.side.indexOf("top") !== -1) { //anchors bottom edge, changes height
+			var dy = this.prevY - e.clientY;
+			this.active.setHeight(this.active.height + dy);
+			this.active.setY(e.clientY - canvas.offsetTop - this.offsetTop);
+		}
+
+		if (editor.side.indexOf("bottom") !== -1) { //anchors top edge, changes height
+			var dy = this.prevY - e.clientY;
+			this.active.setHeight(this.active.height - dy);
+		}
+
+		if (editor.side.indexOf("middle") !== -1) { //do normal click
+			this.active.setX(e.clientX - canvas.offsetLeft - this.offsetLeft);
+			this.active.setY(e.clientY - canvas.offsetTop - this.offsetTop);
+		}
+
+		//set values for later
+		this.prevX = e.clientX;
+		this.prevY = e.clientY;
+	}
+
+	recolor(other) {
+		other.color = getRandomColor();
 	}
 
 	sendElementToTop() { //TODO: figure out how to send rectangle to top
@@ -139,7 +205,7 @@ class Editor {
 	}
 }
 
-var p1 = new Rectangle(20, 20, 40, 40, 1);
+var p1 = new Rectangle(20, 20, 40, 40, 3);
 var editor = new Editor();
 
 window.onload = function() {
@@ -185,14 +251,9 @@ function getRandomColor() {
 }
 
 function drawGridofRects() {
-	for (var x = 0; x * 100 < canvas.width; x++) {
-		for (var y = 0; y * 100 < canvas.height; y++) {
-			rectList.push(new Rectangle(100 * x + 40, 100 * y + 40, 10, 10));
-		}
-	}
-	rectList.push(new Rectangle(0, 200, canvas.width, 10));
-	rectList.push(new Rectangle(0, 140, canvas.width / 3, 10));
-	rectList.push(new Rectangle(canvas.width - canvas.width / 3, 140, canvas.width / 3, 10));
+	rectList.push(new Rectangle(0, 800, canvas.width, 10));
+	rectList.push(new Rectangle(0, 740, canvas.width / 3, 10));
+	rectList.push(new Rectangle(canvas.width - canvas.width / 3, 740, canvas.width / 3, 10));
 }
 
 function drawBG() { //TODO: find a bg that actually works
@@ -206,21 +267,19 @@ function drawBG() { //TODO: find a bg that actually works
 function drawPlayer() {
 	if (p1.dir === 0) {
 		ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
-    //ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
   }
 	else if (p1.dir === 1 || p1.dir === undefined) {
 		ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
-    //ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
   }
 
 }
 
 function keydown(e) {
 	//move character
-	if (e.keyCode === 37){ keysDown[0] = 1; p1.dir = 0; }
-	if (e.keyCode === 38) keysDown[1] = 1;
-	if (e.keyCode === 39){ keysDown[2] = 1; p1.dir = 1; }
-	if (e.keyCode === 40) keysDown[3] = 1;
+	if (e.keyCode === 37 || e.keyCode === 65) { keysDown[0] = 1; p1.dir = 0; } //left or a
+	if (e.keyCode === 38 || e.keyCode === 87) keysDown[1] = 1; //up or w
+	if (e.keyCode === 39 || e.keyCode === 68) { keysDown[2] = 1; p1.dir = 1; } //right or d
+	if (e.keyCode === 40 || e.keyCode === 83) keysDown[3] = 1; //down or s
 	if (e.keyCode === 16) keysDown[4] = 1; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.xSpeed += 1;
@@ -229,10 +288,10 @@ function keydown(e) {
 
 function keyup(e) {
 	//move character
-	if (e.keyCode === 37) keysDown[0] = 0;
-	if (e.keyCode === 38) keysDown[1] = 0;
-	if (e.keyCode === 39) keysDown[2] = 0;
-	if (e.keyCode === 40) keysDown[3] = 0;
+	if (e.keyCode === 37 || e.keyCode === 65) keysDown[0] = 0;
+	if (e.keyCode === 38 || e.keyCode === 87) keysDown[1] = 0;
+	if (e.keyCode === 39 || e.keyCode === 68) keysDown[2] = 0;
+	if (e.keyCode === 40 || e.keyCode === 83) keysDown[3] = 0;
 	if (e.keyCode === 16) keysDown[4] = 0; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.speed += 1;
@@ -244,50 +303,15 @@ function click(e) {
 }
 
 function mousedown(e) {
-	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision()
+	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
 	if (other !== false) {
-		editor.active = other;
-		editor.sendElementToTop();
-		editor.offsetLeft = e.clientX - canvas.offsetLeft - other.x;
-		editor.offsetTop = e.clientY - canvas.offsetTop - other.y;
-		editor.side = "";
-		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) editor.side = editor.side.concat("left");
-		if (Math.abs(other.x + other.width - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) editor.side = editor.side.concat("right");
-		if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) < other.height / 4) editor.side = editor.side.concat("top");
-		if (Math.abs(other.y + other.height - (e.clientY - canvas.offsetTop)) > other.height * 3 / 4) editor.side = editor.side.concat("bottom");
-		if (editor.side = "") editor.side = "middle";
-		console.log(editor.side);
+		editor.setActive(other, e);
 	}
 }
 
 function mousemove(e) {
 	if (editor.active !== false) { //currently dragging something
-		if (keysDown[4]) { //shift clicked
-			//anchors right edge, changes width
-
-				var dx = editor.prevX - e.clientX;
-
-				editor.active.setWidth(editor.active.width + dx);
-				editor.active.setX(e.clientX - canvas.offsetLeft - editor.offsetLeft); //TODO: make it not drag when width is at its lowest
-			//}
-			//anchors bottom edge, changes height
-
-				var dy = editor.prevY - e.clientY;
-				editor.active.setY(e.clientY - canvas.offsetTop - editor.offsetTop);
-				editor.active.setHeight(editor.active.height + dy);
-			//}
-		} else { //regular click
-			editor.active.setY(e.clientY - canvas.offsetTop - editor.offsetTop);
-			editor.active.setX(e.clientX - canvas.offsetLeft - editor.offsetLeft);
-  	}
-
-  	if (p1.checkCollision() !== false) {
-      	p1.touchGround(p1.checkCollision());
-  	}
-
-		//set values for later
-		editor.prevX = e.clientX;
-		editor.prevY = e.clientY;
+		editor.move(e);
 	}
 }
 
@@ -296,17 +320,10 @@ function mouseup(e) {
 }
 
 function dblclick(e) {
-			console.log('double clicked!');
-	if (e.clientY - canvas.offsetTop < editor.active.y) {
-		var dy =  e.clientY - (e.clientY - canvas.offsetTop - editor.offsetTop);
-		editor.active.y = e.clientY - canvas.offsetTop - editor.offsetTop;
-		editor.active.height += dy;
-
+	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
+	if (other !== false) {
+		editor.recolor(other);
+	} else {
+		rectList.push(new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop));
 	}
-	editor.active.width = e.clientX - canvas.offsetLeft - editor.offsetLeft;
-
-	if (p1.checkCollision() !== false) {
-			p1.touchGround(p1.checkCollision());
-
-		}
 }
