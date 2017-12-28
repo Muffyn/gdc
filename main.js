@@ -6,16 +6,18 @@ TODO: finish the game
 var canvas, ctx; //TODO: clean up these random globals?
 var keysDown = [];
 var rectList = [];
-var active;
+var menuList = [];
+var state;
+
 
 class Rectangle { //TODO: move to separate file
-	constructor(x, y, width, height, speed) {
+	constructor(x, y, width, height, vel) {
 		this.x = x || 0;
 		this.y = y || 0;
 		this.width = width || 10;
 		this.height = height || 10;
-		this.xSpeed = speed || 1;
-		this.ySpeed = 0;
+		this.xVel = vel || 1;
+		this.yVel = 0;
 		this.jumpHeight = 8;
 		this.gravity = 0.5;
 		this.color = getRandomColor();
@@ -38,39 +40,47 @@ class Rectangle { //TODO: move to separate file
 	setHeight(h) { if (h > 0) this.height = h; }
 	getHeight() { return this.height; }
 
-	checkCollision() {
-		for (var i = 0; i < rectList.length; i++) {
+	checkCollision(other) {
+		if (arguments[0] === undefined) {
+			for (var i = 0; i < rectList.length; i++) {
 
-		  if (this.x + this.width > rectList[i].x &&
-		  	this.y + this.height > rectList[i].y &&
-				this.x < rectList[i].x + rectList[i].width &&
-				this.y < rectList[i].y + rectList[i].height)
-				return rectList[i];
+		  	if (this.x + this.width > rectList[i].x &&
+		  		this.y + this.height > rectList[i].y &&
+					this.x < rectList[i].x + rectList[i].width &&
+					this.y < rectList[i].y + rectList[i].height)
+					return rectList[i];
+				}
+				return false;
+		} else {
+			if (this.x + this.width > other.x &&
+				this.y + this.height > other.y &&
+				this.x < other.x + other.width &&
+				this.y < other.y + other.height)
+				return other;
+			return false;
 		}
-		return false;
 	}
+
+
 
 	move() { //TODO: convert to actual physics LOL
 
-
-		//check collision with rectList
-
-		//update ySpeed
+		//update yVel
 		if (this.inAir === true) {
-			this.ySpeed += this.gravity;
+			this.yVel += this.gravity;
 		}
 
 		//up
 		if (keysDown[1] === 1 && this.inAir === false) {
 			this.inAir = true;
-			this.ySpeed = -this.jumpHeight;
+			this.yVel = -this.jumpHeight;
 			this.gravity = 0.5;
 		}
 
 		var other;
 
 		if (this.inAir) {
-			other = (new Rectangle (this.x, this.y + this.ySpeed, this.width, this.height)).checkCollision();
+			other = (new Rectangle (this.x, this.y + this.yVel, this.width, this.height)).checkCollision();
 
 		if (other === false) {
 			this.inAir = true;
@@ -79,7 +89,7 @@ class Rectangle { //TODO: move to separate file
 				if (this.y > other.y) { //touching ceiling
 					console.log('Touched ceiling!' + this.y + other.y);
 					this.setY(other.y + other.height);
-					this.ySpeed = 0;
+					this.yVel = 0;
 				} else { //on ground
 					this.touchGround(other);
 				}
@@ -95,27 +105,27 @@ class Rectangle { //TODO: move to separate file
 		}
 
 		if (keysDown[0] === 1) { //left
-			other = (new Rectangle (this.x - this.xSpeed, this.y, this.width, this.height)).checkCollision();
-			if (other !== false) this.setX(other.x + other.width);
-			else this.setX(this.x - this.xSpeed);
-			other = (new Rectangle (this.x - this.xSpeed, this.y + this.ySpeed, this.width, this.height)).checkCollision();
-			if (other !== false) this.setX(other.x + other.width);
-			else this.setX(this.x - this.xSpeed);
+			this.xVel = -Math.abs(this.xVel)
+		} else if (keysDown[2] === 1) { //right
+			this.xVel = Math.abs(this.xVel)
 		}
-		if (keysDown[2] === 1) { //right
-			other = (new Rectangle (this.x + this.xSpeed, this.y, this.width, this.height)).checkCollision();
-			if (other !== false) this.x = other.x - this.width;
-			else this.setX(this.x + this.xSpeed);
-			other = (new Rectangle (this.x + this.xSpeed, this.y + this.ySpeed, this.width, this.height)).checkCollision();
-			if (other !== false) this.x = other.x - this.width;
-			else this.setX(this.x + this.xSpeed);
+
+		if (keysDown[0] || keysDown[2]) {
+			other = (new Rectangle (this.x + this.xVel, this.y, this.width, this.height)).checkCollision();
+			if (other !== false) if (this.xVel > 0) this.setX(other.x - this.width); else this.setX(other.x + other.width);
+			else {
+				other = (new Rectangle (this.x + this.xVel, this.y + this.yVel, this.width, this.height)).checkCollision();
+				if (other !== false) if (this.xVel > 0) this.setX(other.x - this.width); else this.setX(other.x + other.width);
+				else this.setX(this.x + this.xVel);
+			}
 		}
+
 
 		if (this.inAir === true) {
-			this.setY(this.y + this.ySpeed);
+			this.setY(this.y + this.yVel);
 		}
 
-		if (this.checkCollision()) { //TODO: figure out what to do when this happens :s Currently happens when you hit a corner or a block gets inside of you
+		if (this.checkCollision()) { //TODO: figure out what to do when this happens :s Currently happens when a block gets inside of you
 			console.log('p1 is stuck in a rect at ' + this.checkCollision().x + ", " + this.checkCollision().y);
 		}
 
@@ -123,7 +133,7 @@ class Rectangle { //TODO: move to separate file
 
   touchGround(other) {
     this.setY(other.y - this.height);
-    this.ySpeed = 0;
+    this.yVel = 0;
     this.inAir = false;
     this.gravity = 0;
   }
@@ -212,6 +222,9 @@ window.onload = function() {
 	canvas = document.getElementById("canvas");
 	ctx = canvas.getContext("2d");
 
+	// get save data
+	load('default');
+
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
 	document.addEventListener("click", click);
@@ -219,8 +232,6 @@ window.onload = function() {
 	document.addEventListener("mousemove", mousemove);
 	document.addEventListener("mouseup", mouseup);
 	document.addEventListener("dblclick", dblclick);
-
-	drawGridofRects(); //TODO: clean this up
 
 	setInterval(main, 1/60 * 1000);
 }
@@ -239,6 +250,7 @@ function main() {
 	}
 
 	drawPlayer();
+	drawMenu();
 
 }
 
@@ -256,14 +268,6 @@ function drawGridofRects() {
 	rectList.push(new Rectangle(canvas.width - canvas.width / 3, 740, canvas.width / 3, 10));
 }
 
-function drawBG() { //TODO: find a bg that actually works
-	var img =  document.getElementById('grass');
-  var pat = ctx.createPattern(img, 'repeat');
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = pat;
-  ctx.fill();
-}
-
 function drawPlayer() {
 	if (p1.dir === 0) {
 		ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
@@ -271,6 +275,27 @@ function drawPlayer() {
 	else if (p1.dir === 1 || p1.dir === undefined) {
 		ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
   }
+}
+
+function drawMenu() {
+	if (menuList.length === 0) {
+		menuList.push(new Rectangle(canvas.width - 220, 20, 200, 50));
+		menuList.push(new Rectangle(canvas.width - 220, 90, 200, 50));
+	}
+
+
+	for (var i = 0; i < menuList.length; i++) {
+		ctx.fillStyle = menuList[i].color;
+		ctx.fillRect(menuList[i].x, menuList[i].y, menuList[i].width, menuList[i].height);
+
+	}
+	ctx.fillStyle = "#FFF"
+	ctx.font = "30px Arial";
+	ctx.fillText("Save", menuList[0].x + 60, menuList[0].y + 35);
+	ctx.fillText("Load", menuList[1].x + 60, menuList[1].y + 35);
+	ctx.fillStyle = "#000"
+	ctx.strokeText("Save", menuList[0].x + 60, menuList[0].y + 35);
+	ctx.strokeText("Load", menuList[1].x + 60, menuList[1].y + 35);
 
 }
 
@@ -282,8 +307,8 @@ function keydown(e) {
 	if (e.keyCode === 40 || e.keyCode === 83) keysDown[3] = 1; //down or s
 	if (e.keyCode === 16) keysDown[4] = 1; //shift
 	//temp for changing speed
-	if (e.keyCode === 187) p1.xSpeed += 1;
-	if (e.keyCode === 189 && p1.xSpeed > 1) p1.xSpeed -= 1;
+	if (e.keyCode === 187) p1.xVel += 1;
+	if (e.keyCode === 189 && p1.xVel > 1) p1.xVel -= 1;
 }
 
 function keyup(e) {
@@ -303,10 +328,16 @@ function click(e) {
 }
 
 function mousedown(e) {
-	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
+	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision();
 	if (other !== false) {
 		editor.setActive(other, e);
+	} else {
+		other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision(menuList[0]);
+		if (other !== false) save(prompt("Enter name for save: "));
+		other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision(menuList[1]);
+		if (other !== false) load(prompt("Enter name for load: "));
 	}
+
 }
 
 function mousemove(e) {
@@ -320,10 +351,35 @@ function mouseup(e) {
 }
 
 function dblclick(e) {
-	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
+	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision();
 	if (other !== false) {
 		editor.recolor(other);
 	} else {
 		rectList.push(new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop));
 	}
+}
+
+function save(saveKey) {
+	state.rectList = rectList;
+	localStorage.setItem(saveKey, JSON.stringify(state));
+}
+
+function load(saveKey) {
+	state = JSON.parse(localStorage.getItem(saveKey));
+
+	if (state === null) {
+		rectList = [];
+		drawGridofRects();
+		state = {};
+		state.rectList = rectList;
+	} else {
+		rectList = [];
+		for (var i = 0; i < state.rectList.length; i++) {
+			rectList.push(new Rectangle(state.rectList[i].x, state.rectList[i].y, state.rectList[i].width, state.rectList[i].height));
+		}
+	}
+}
+
+window.onunload = function() {
+	save('default');
 }
