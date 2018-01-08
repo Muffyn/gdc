@@ -139,6 +139,36 @@ class Rectangle { //TODO: move to separate file
   }
 }
 
+class movingRectangle {
+	constructor(x, y, width, height, vel, distance) {
+		super(x, y, width, height, vel);
+		this.distance = distance;
+		this.rect = new Rectangle(x, y, width, height);
+		rectList.push(this.rect);
+		this.direction = 1;
+		movingRectangleList.push(this);
+	}
+
+	act() {
+		if (this.x + this.distance < this.rect.x) {
+			this.direction = 0;
+		} else if (this.x > this.rect.x) {
+			this.direction = 1;
+		}
+		if (this.direction) {
+			this.rect.x += 1;
+		} else {
+			this.rect.x -= 1;
+		}
+	}
+
+	render() {
+		ctx.fillStyle = this.color;
+		ctx.drawRect(this.x, this.y, this.width, this.height);
+
+	}
+}
+
 class Editor {
 	constructor() {
 		this.active = false;
