@@ -60,9 +60,7 @@ class Rectangle { //TODO: move to separate file
 			return false;
 		}
 	}
-
-
-
+	
 	move() { //TODO: convert to actual physics LOL
 
 		//update yVel
@@ -137,9 +135,14 @@ class Rectangle { //TODO: move to separate file
     this.inAir = false;
     this.gravity = 0;
   }
+	
+	render() {
+		ctx.fillStyle = this.color;
+		ctx.fillRect(this.x, this.y, this.width, this.height);
+	}
 }
 
-class movingRectangle {
+class MovingRectangle extends Rectangle {
 	constructor(x, y, width, height, vel, distance) {
 		super(x, y, width, height, vel);
 		this.distance = distance;
@@ -185,7 +188,7 @@ class Editor {
 		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) this.side = this.side.concat("left");
 		else if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) this.side = this.side.concat("right");
 		else if (this.side === "") this.side = "middle";
-		console.log(this.side);
+		sendElementToTop();
 	}
 
 	move(e) { //TODO: come up with more elegant way to resize
@@ -240,8 +243,11 @@ class Editor {
 		other.color = getRandomColor();
 	}
 
-	sendElementToTop() { //TODO: figure out how to send rectangle to top
-
+	sendElementToTop() { 
+		for (var i = 0; i < rectList.length; i++) {
+			if (rectList[i].is(this.active))
+    		this.splice(0, 0, this.splice(i, 1)[0]);
+		}
 	}
 }
 
@@ -275,8 +281,7 @@ function main() {
 	//drawBG();
 
 	for (var i = 0; i < rectList.length; i++) {
-		ctx.fillStyle = rectList[i].color;
-		ctx.fillRect(rectList[i].x, rectList[i].y, rectList[i].width, rectList[i].height);
+		rectList[i].render();
 	}
 
 	drawPlayer();
