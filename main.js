@@ -60,7 +60,7 @@ class Rectangle { //TODO: move to separate file
 			return false;
 		}
 	}
-	
+
 	move() { //TODO: convert to actual physics LOL
 
 		//update yVel
@@ -135,7 +135,7 @@ class Rectangle { //TODO: move to separate file
     this.inAir = false;
     this.gravity = 0;
   }
-	
+
 	render() {
 		ctx.fillStyle = this.color;
 		ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -188,7 +188,7 @@ class Editor {
 		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) this.side = this.side.concat("left");
 		else if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) this.side = this.side.concat("right");
 		else if (this.side === "") this.side = "middle";
-		sendElementToTop();
+		this.sendElementToTop();
 	}
 
 	move(e) { //TODO: come up with more elegant way to resize
@@ -243,10 +243,10 @@ class Editor {
 		other.color = getRandomColor();
 	}
 
-	sendElementToTop() { 
+	sendElementToTop() {
 		for (var i = 0; i < rectList.length; i++) {
-			if (rectList[i].is(this.active))
-    		this.splice(0, 0, this.splice(i, 1)[0]);
+			if (rectList[i] === this.active)
+    		rectList.splice(0, 0, rectList.splice(i, 1)[0]);
 		}
 	}
 }
@@ -280,7 +280,7 @@ function main() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
 
-	for (var i = 0; i < rectList.length; i++) {
+	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
 
