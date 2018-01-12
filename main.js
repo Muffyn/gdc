@@ -8,6 +8,7 @@ var keysDown = [];
 var rectList = [];
 var menuList = [];
 var state;
+var gridSize = 64;
 
 
 class Rectangle { //TODO: move to separate file
@@ -22,6 +23,7 @@ class Rectangle { //TODO: move to separate file
 		this.gravity = 0.5;
 		this.color = getRandomColor();
 		this.inAir = false;
+		this.onGrid = true;
 	}
 	setX(x) {
 		if (x < 0) this.x = 0;
@@ -249,6 +251,31 @@ class Editor {
     		rectList.splice(0, 0, rectList.splice(i, 1)[0]);
 		}
 	}
+	snapToGrid() {
+		if (this.active.x % gridSize < gridSize / 2) {
+			this.active.setX(Math.floor(this.active.x / 16) * 16);
+		} else {
+			this.active.setX(Math.ceil(this.active.x / 16) * 16);
+		}
+
+		if (this.active.y % gridSize < gridSize / 2) {
+			this.active.setY(Math.floor(this.active.y / 16) * 16);
+		} else {
+			this.active.setY(Math.ceil(this.active.y / 16) * 16);
+		}
+
+		if (this.active.width % gridSize < gridSize / 2) {
+			this.active.setWidth(Math.floor(this.active.width / 16) * 16);
+		} else {
+			this.active.setWidth(Math.ceil(this.active.width / 16) * 16);
+		}
+
+		if (this.active.height % gridSize < gridSize / 2) {
+			this.active.setHeight(Math.floor(this.active.height / 16) * 16);
+		} else {
+			this.active.setHeight(Math.ceil(this.active.height / 16) * 16);
+		}
+	}
 }
 
 var p1 = new Rectangle(20, 20, 40, 40, 3);
@@ -279,7 +306,7 @@ function main() {
 	//render
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
-
+	//drawGrid();
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
@@ -297,11 +324,19 @@ function getRandomColor() {
 	return color;
 }
 
-function drawGridofRects() {
-	rectList.push(new Rectangle(0, 800, canvas.width, 10));
-	rectList.push(new Rectangle(0, 740, canvas.width / 3, 10));
-	rectList.push(new Rectangle(canvas.width - canvas.width / 3, 740, canvas.width / 3, 10));
-}
+function drawGrid() {
+    for (x = 0; x <= canvas.width; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+			}
+    for (y = 0; y <= canvas.height; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+      }
+
+    ctx.stroke();
+
+};
 
 function drawPlayer() {
 	if (p1.dir === 0) {
@@ -382,7 +417,10 @@ function mousemove(e) {
 }
 
 function mouseup(e) {
-	editor.active = false;
+	editor.snapToGrid();
+	if (editor.active !== false) {
+		editor.active = false;
+	}
 }
 
 function dblclick(e) {
