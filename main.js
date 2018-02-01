@@ -9,19 +9,21 @@ var rectList = [];
 var menuList = [];
 var state;
 var gridSize = 64;
+var fps = 0, prevFps = 0;
+var prevTime = Date.now()
 
 
 class Rectangle { //TODO: move to separate file
-	constructor(x, y, width, height, vel) {
+	constructor(x, y, width, height, color) {
 		this.x = x || 0;
 		this.y = y || 0;
-		this.width = width || 10;
-		this.height = height || 10;
-		this.xVel = vel || 1;
+		this.width = width || gridSize;
+		this.height = height || gridSize;
+		this.xVel = 3;
 		this.yVel = 0;
 		this.jumpHeight = 8;
 		this.gravity = 0.5;
-		this.color = getRandomColor();
+		this.color = color || getRandomColor();
 		this.inAir = false;
 		this.onGrid = true;
 	}
@@ -45,7 +47,6 @@ class Rectangle { //TODO: move to separate file
 	checkCollision(other) {
 		if (arguments[0] === undefined) {
 			for (var i = 0; i < rectList.length; i++) {
-
 		  	if (this.x + this.width > rectList[i].x &&
 		  		this.y + this.height > rectList[i].y &&
 					this.x < rectList[i].x + rectList[i].width &&
@@ -177,6 +178,8 @@ class MovingRectangle extends Rectangle {
 class Editor {
 	constructor() {
 		this.active = false;
+		this.shadow = new Rectangle();
+		this.shadow.color = 'rgba(00, 00, 00, 0)';
 	}
 
 	setActive(other, e) {
@@ -190,12 +193,14 @@ class Editor {
 		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) this.side = this.side.concat("left");
 		else if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) this.side = this.side.concat("right");
 		else if (this.side === "") this.side = "middle";
-		this.sendElementToTop();
+		this.sendElementToTop(this.shadow);
+		this.sendElementToTop(this.active);
+		this.moveShadow();
 	}
 
 	move(e) { //TODO: come up with more elegant way to resize
 		if (keysDown[4]) { //shift clicked
-			this.resize(e)
+			this.resize(e);
 		} else {
 			this.active.setX(e.clientX - canvas.offsetLeft - this.offsetLeft);
 			this.active.setY(e.clientY - canvas.offsetTop - this.offsetTop);
@@ -205,10 +210,17 @@ class Editor {
 			this.prevY = e.clientY;
 		}
 
+		//render shadow of drop location
+		this.moveShadow();
+
+		//fix where the player is TODO: make it take direction into account
+		if (this.active.checkCollision(p1)) {
+			p1.y = this.active.y - p1.height;
+		}
+
 	}
 
 	resize(e) {
-
 		if (this.side.indexOf("left") !== -1) { //anchors right edge, changes width
 			var dx = this.prevX - e.clientX;
 			this.active.setWidth(this.active.width + dx);
@@ -245,40 +257,57 @@ class Editor {
 		other.color = getRandomColor();
 	}
 
-	sendElementToTop() {
+	sendElementToTop(element) {
 		for (var i = 0; i < rectList.length; i++) {
-			if (rectList[i] === this.active)
+			if (rectList[i] === element)
     		rectList.splice(0, 0, rectList.splice(i, 1)[0]);
 		}
 	}
-	snapToGrid() {
-		if (this.active.x % gridSize < gridSize / 2) {
-			this.active.setX(Math.floor(this.active.x / 16) * 16);
+
+	snapToGrid(obj) {
+		//set the x, y, width, and height of obj to the nearest multiple of gridSize
+		if (obj.x % gridSize < gridSize / 2) {
+			obj.setX(Math.floor(obj.x / gridSize) * gridSize);
 		} else {
-			this.active.setX(Math.ceil(this.active.x / 16) * 16);
+			obj.setX(Math.ceil(obj.x / gridSize) * gridSize);
 		}
 
-		if (this.active.y % gridSize < gridSize / 2) {
-			this.active.setY(Math.floor(this.active.y / 16) * 16);
+		if (obj.y % gridSize < gridSize / 2) {
+			obj.setY(Math.floor(obj.y / gridSize) * gridSize);
 		} else {
-			this.active.setY(Math.ceil(this.active.y / 16) * 16);
+			obj.setY(Math.ceil(obj.y / gridSize) * gridSize);
 		}
 
-		if (this.active.width % gridSize < gridSize / 2) {
-			this.active.setWidth(Math.floor(this.active.width / 16) * 16);
+		if (obj.width % gridSize < gridSize / 2) {
+			obj.setWidth(Math.floor(obj.width / gridSize) * gridSize);
+		} else if (obj.width < gridSize) {
+			obj.setWidth(gridSize);
 		} else {
-			this.active.setWidth(Math.ceil(this.active.width / 16) * 16);
+			obj.setWidth(Math.ceil(obj.width / gridSize) * gridSize);
 		}
 
-		if (this.active.height % gridSize < gridSize / 2) {
-			this.active.setHeight(Math.floor(this.active.height / 16) * 16);
+		if (obj.height % gridSize < gridSize / 2) {
+			obj.setHeight(Math.floor(obj.height / gridSize) * gridSize);
+		} else if (obj.height < gridSize) {
+			obj.setHeight(gridSize);
 		} else {
-			this.active.setHeight(Math.ceil(this.active.height / 16) * 16);
+			obj.setHeight(Math.ceil(obj.height / gridSize) * gridSize);
 		}
+	}
+
+	moveShadow() {
+		this.shadow.setX(this.active.x);
+		this.shadow.setY(this.active.y);
+		this.shadow.setWidth(this.active.width);
+		this.shadow.setHeight(this.active.height);
+		this.shadow.color = "rgba(" + parseInt(this.active.color.substring(1, 3), 16) +
+												", " + parseInt(this.active.color.substring(3, 5), 16) +
+												", " + parseInt(this.active.color.substring(5, 7), 16) + ", 0.5)"; //transparency hack
+		this.snapToGrid(this.shadow);
 	}
 }
 
-var p1 = new Rectangle(20, 20, 40, 40, 3);
+var p1 = new Rectangle(20, 20, 40, 40);
 var editor = new Editor();
 
 window.onload = function() {
@@ -306,11 +335,11 @@ function main() {
 	//render
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
-	//drawGrid();
+	drawGrid();
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
-
+	editor.shadow.render(); //TODO
 	drawPlayer();
 	drawMenu();
 
@@ -325,16 +354,25 @@ function getRandomColor() {
 }
 
 function drawGrid() {
-    for (x = 0; x <= canvas.width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-			}
-    for (y = 0; y <= canvas.height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-      }
 
-    ctx.stroke();
+	var numLines = 0;
+	ctx.lineWidth = 2;
+	ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+	ctx.beginPath();
+  for (x = 0; x <= canvas.width; x += gridSize) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+		numLines += 1;
+	}
+  for (y = 0; y <= canvas.height; y += gridSize) {
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+		numLines +=1;
+  }
+
+  ctx.stroke();
+	ctx.lineWidth = 1;
+	ctx.strokeStyle = "#000000";
 
 };
 
@@ -348,17 +386,19 @@ function drawPlayer() {
 }
 
 function drawMenu() {
+	//add rectangles to list if first time
 	if (menuList.length === 0) {
 		menuList.push(new Rectangle(canvas.width - 220, 20, 200, 50));
 		menuList.push(new Rectangle(canvas.width - 220, 90, 200, 50));
 	}
 
-
+	//draw back of buttons
 	for (var i = 0; i < menuList.length; i++) {
 		ctx.fillStyle = menuList[i].color;
 		ctx.fillRect(menuList[i].x, menuList[i].y, menuList[i].width, menuList[i].height);
-
 	}
+
+	//draw text
 	ctx.fillStyle = "#FFF"
 	ctx.font = "30px Arial";
 	ctx.fillText("Save", menuList[0].x + 60, menuList[0].y + 35);
@@ -367,6 +407,19 @@ function drawMenu() {
 	ctx.strokeText("Save", menuList[0].x + 60, menuList[0].y + 35);
 	ctx.strokeText("Load", menuList[1].x + 60, menuList[1].y + 35);
 
+	//fps
+	if (Date.now() - prevTime > 1000) {
+		prevFps = fps;
+		fps = 0;
+		prevTime = Date.now();
+
+	} else {
+		fps += 1;
+	}
+	ctx.fillStyle = "#FFF"
+	ctx.fillText(prevFps + ' fps', canvas.offsetLeft, canvas.offsetTop + 20);
+	ctx.fillStyle = "#000"
+	ctx.strokeText(prevFps + ' fps', canvas.offsetLeft, canvas.offsetTop + 20);
 }
 
 function keydown(e) {
@@ -417,8 +470,14 @@ function mousemove(e) {
 }
 
 function mouseup(e) {
-	editor.snapToGrid();
+	//stop the editor from functioning
 	if (editor.active !== false) {
+		editor.snapToGrid(editor.active);
+		//fix where the player is TODO: make it take direction into account
+		if (editor.active.checkCollision(p1)) {
+			p1.y = editor.active.y - p1.height;
+		}
+		editor.shadow.color = 'rgba(00, 00, 00, 0)';
 		editor.active = false;
 	}
 }
@@ -433,6 +492,7 @@ function dblclick(e) {
 }
 
 function save(saveKey) {
+
 	state.rectList = rectList;
 	localStorage.setItem(saveKey, JSON.stringify(state));
 }
@@ -440,15 +500,17 @@ function save(saveKey) {
 function load(saveKey) {
 	state = JSON.parse(localStorage.getItem(saveKey));
 
-	if (state === null) {
+	if (state === null) { //no save found
 		rectList = [];
-		drawGridofRects();
+		rectList.push(new Rectangle(0, gridSize));
+		p1.setX(0);
+		p1.setY(0);
 		state = {};
 		state.rectList = rectList;
 	} else {
 		rectList = [];
 		for (var i = 0; i < state.rectList.length; i++) {
-			rectList.push(new Rectangle(state.rectList[i].x, state.rectList[i].y, state.rectList[i].width, state.rectList[i].height));
+			rectList.push(new Rectangle(state.rectList[i].x, state.rectList[i].y, state.rectList[i].width, state.rectList[i].height, state.rectList[i].color));
 		}
 	}
 }
