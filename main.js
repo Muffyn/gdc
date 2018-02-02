@@ -8,7 +8,7 @@ var keysDown = [];
 var rectList = [];
 var menuList = [];
 var state;
-var gridSize = 64;
+var gridSize = 32;
 var fps = 0, prevFps = 0;
 var prevTime = Date.now()
 
@@ -145,32 +145,36 @@ class Rectangle { //TODO: move to separate file
 	}
 }
 
-class MovingRectangle extends Rectangle {
-	constructor(x, y, width, height, vel, distance) {
-		super(x, y, width, height, vel);
-		this.distance = distance;
-		this.rect = new Rectangle(x, y, width, height);
-		rectList.push(this.rect);
-		this.direction = 1;
-		movingRectangleList.push(this);
+class Spike extends Rectangle {
+	
+	render() {
+		ctx.fillStyle = this.color;
+		ctx.beginPath();
+		ctx.moveTo(this.x, this.height + this.y);
+		ctx.lineTo(this.x + this.width / 2, this.y);
+		ctx.lineTo(this.x + this.width, this.height + this.y);
+		ctx.lineTo(this.x, this.height + this.y);
+		ctx.fill();
 	}
+}
+
+class MovingRectangle extends Rectangle {
 
 	act() {
-		if (this.x + this.distance < this.rect.x) {
-			this.direction = 0;
-		} else if (this.x > this.rect.x) {
+		this.distance = 64;
+		if (this.x < 128) {
 			this.direction = 1;
+		} else if (this.x > 256) {
+			this.direction = 0;
 		}
 		if (this.direction) {
-			this.rect.x += 1;
+			this.setX(this.getX() + 1);
 		} else {
-			this.rect.x -= 1;
+			this.setX(this.getX() - 1);
 		}
 	}
 
 	render() {
-		ctx.fillStyle = this.color;
-		ctx.drawRect(this.x, this.y, this.width, this.height);
 
 	}
 }
@@ -316,6 +320,7 @@ window.onload = function() {
 
 	// get save data
 	load('default');
+	rectList.push(new Spike(32, 32, 32, 32));
 
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
@@ -336,9 +341,12 @@ function main() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
 	drawGrid();
+
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
+
+
 	editor.shadow.render(); //TODO
 	drawPlayer();
 	drawMenu();
@@ -451,7 +459,9 @@ function click(e) {
 }
 
 function mousedown(e) {
-	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision();
+	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
+
+	
 	if (other !== false) {
 		editor.setActive(other, e);
 	} else {
