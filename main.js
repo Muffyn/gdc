@@ -8,7 +8,7 @@ var keysDown = [];
 var rectList = [];
 var menuList = [];
 var state;
-var gridSize = 32;
+var gridSize = 16;
 var fps = 0, prevFps = 0;
 var prevTime = Date.now()
 
@@ -146,7 +146,7 @@ class Rectangle { //TODO: move to separate file
 }
 
 class Spike extends Rectangle {
-	
+
 	render() {
 		ctx.fillStyle = this.color;
 		ctx.beginPath();
@@ -188,18 +188,29 @@ class Editor {
 
 	setActive(other, e) {
 		this.active = other;
-		this.sendElementToTop();
+
 		this.offsetLeft = e.clientX - canvas.offsetLeft - other.x;
 		this.offsetTop = e.clientY - canvas.offsetTop - other.y;
+
 		this.side = "";
 		if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) < other.height / 4) this.side = this.side.concat("top");
 		else if (Math.abs(other.y - (e.clientY - canvas.offsetTop)) > other.height * 3/ 4) this.side = this.side.concat("bottom");
 		if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) < other.width / 4) this.side = this.side.concat("left");
 		else if (Math.abs(other.x - (e.clientX - canvas.offsetLeft)) > other.width * 3 / 4) this.side = this.side.concat("right");
 		else if (this.side === "") this.side = "middle";
+
 		this.sendElementToTop(this.shadow);
 		this.sendElementToTop(this.active);
 		this.moveShadow();
+	}
+
+	removeActive() {
+		//fix where the player is TODO: make it take direction into account
+		if (this.active.checkCollision(p1)) {
+			p1.y = this.active.y - p1.height;
+		}
+		this.shadow.color = 'rgba(00, 00, 00, 0)';
+		this.active = false;
 	}
 
 	move(e) { //TODO: come up with more elegant way to resize
@@ -309,6 +320,13 @@ class Editor {
 												", " + parseInt(this.active.color.substring(5, 7), 16) + ", 0.5)"; //transparency hack
 		this.snapToGrid(this.shadow);
 	}
+
+	showColorPalette() {
+		if (this.active !== false && !this.held)
+		{
+			var testttt = new Rectangle(this.active.x + this.active.width + 10, this.active.y + 10, 10, 10).render();
+		}
+	}
 }
 
 var p1 = new Rectangle(20, 20, 40, 40);
@@ -320,7 +338,7 @@ window.onload = function() {
 
 	// get save data
 	load('default');
-	rectList.push(new Spike(32, 32, 32, 32));
+	rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
@@ -347,9 +365,10 @@ function main() {
 	}
 
 
-	editor.shadow.render(); //TODO
+	editor.shadow.render(); //TODO cleanup
 	drawPlayer();
 	drawMenu();
+	editor.showColorPalette();
 
 }
 
@@ -394,7 +413,7 @@ function drawPlayer() {
 }
 
 function drawMenu() {
-	//add rectangles to list if first time
+	//add rectangles to list if first time TODO move to load
 	if (menuList.length === 0) {
 		menuList.push(new Rectangle(canvas.width - 220, 20, 200, 50));
 		menuList.push(new Rectangle(canvas.width - 220, 90, 200, 50));
@@ -461,35 +480,32 @@ function click(e) {
 function mousedown(e) {
 	var other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision();
 
-	
 	if (other !== false) {
 		editor.setActive(other, e);
+		editor.held = true;
 	} else {
-		other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision(menuList[0]);
-		if (other !== false) save(prompt("Enter name for save: "));
-		other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 0, 0).checkCollision(menuList[1]);
-		if (other !== false) load(prompt("Enter name for load: "));
+		editor.removeActive();
 	}
+	//TODO: make button list to clean this up?
+	other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision(menuList[0]);
+	if (other !== false) save(prompt("Enter name for save: "));
+	other = new Rectangle(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop, 1, 1).checkCollision(menuList[1]);
+	if (other !== false) load(prompt("Enter name for load: "));
+
 
 }
 
 function mousemove(e) {
-	if (editor.active !== false) { //currently dragging something
+	if (editor.active !== false && editor.held) { //currently dragging something
 		editor.move(e);
 	}
 }
 
 function mouseup(e) {
-	//stop the editor from functioning
-	if (editor.active !== false) {
-		editor.snapToGrid(editor.active);
-		//fix where the player is TODO: make it take direction into account
-		if (editor.active.checkCollision(p1)) {
-			p1.y = editor.active.y - p1.height;
+		editor.held = false;
+		if (editor.active !== false) {
+			editor.snapToGrid(editor.active);
 		}
-		editor.shadow.color = 'rgba(00, 00, 00, 0)';
-		editor.active = false;
-	}
 }
 
 function dblclick(e) {
