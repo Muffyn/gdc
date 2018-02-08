@@ -324,12 +324,30 @@ class Editor {
 	showColorPalette() {
 		if (this.active !== false && !this.held)
 		{
-			var testttt = new Rectangle(this.active.x + this.active.width + 10, this.active.y + 10, 10, 10).render();
+			new Rectangle(this.active.x + this.active.width + 10, this.active.y + 10, 10, 10).render();
+
+			ctx.beginPath();
+			ctx.lineWidth = 1;
+
+			/*for (var red = 0; red <= 255; red+= 16) {
+				for (var green = 0; green <= 255; green+= 16) {
+					for (var blue = 0; blue <= 255; blue+= 16) {
+						ctx.strokeStyle = "rgba(" + red + ", " + green + ", " + blue + ", 1)";
+						ctx.lineTo(green, blue);
+						ctx.stroke();
+						//ctx.beginPath();
+					}
+				}
+			}*/
+
+
+
+
 		}
 	}
 }
 
-var p1 = new Rectangle(20, 20, 40, 40);
+var p1 = new Rectangle(20, 20, gridSize * 2, gridSize * 2);
 var editor = new Editor();
 
 window.onload = function() {
