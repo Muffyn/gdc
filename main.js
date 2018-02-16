@@ -26,6 +26,8 @@ class Rectangle { //TODO: move to separate file
 		this.color = color || getRandomColor();
 		this.inAir = false;
 		this.onGrid = true;
+		this.sprite = 0;
+		this.spriteList = ["", "wood", "stone"];
 	}
 	setX(x) {
 		if (x < 0) this.x = 0;
@@ -140,8 +142,13 @@ class Rectangle { //TODO: move to separate file
   }
 
 	render() {
-		ctx.fillStyle = this.color;
-		ctx.fillRect(this.x, this.y, this.width, this.height);
+		if (this.sprite) {
+			ctx.drawImage(document.getElementById(this.spriteList[this.sprite]), this.x, this.y, this.width, this.height);
+		} else {
+			ctx.fillStyle = this.color;
+			ctx.fillRect(this.x, this.y, this.width, this.height);
+		}
+
 	}
 }
 
@@ -270,6 +277,9 @@ class Editor {
 
 	recolor(other) {
 		other.color = getRandomColor();
+		other.sprite++;
+		if (other.sprite >= other.spriteList.length)
+			other.sprite = 0;
 	}
 
 	sendElementToTop(element) {
@@ -318,6 +328,7 @@ class Editor {
 		this.shadow.color = "rgba(" + parseInt(this.active.color.substring(1, 3), 16) +
 												", " + parseInt(this.active.color.substring(3, 5), 16) +
 												", " + parseInt(this.active.color.substring(5, 7), 16) + ", 0.5)"; //transparency hack
+		this.shadow.sprite = this.active.sprite;
 		this.snapToGrid(this.shadow);
 	}
 
@@ -339,10 +350,6 @@ class Editor {
 					}
 				}
 			}*/
-
-
-
-
 		}
 	}
 }
@@ -382,8 +389,9 @@ function main() {
 		rectList[i].render();
 	}
 
-
+	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
+	ctx.globalAlpha = 1;
 	drawPlayer();
 	drawMenu();
 	editor.showColorPalette();
