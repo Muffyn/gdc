@@ -10,7 +10,8 @@ var menuList = [];
 var state;
 var gridSize = 16;
 var fps = 0, prevFps = 0;
-var prevTime = Date.now()
+var prevTime = Date.now();
+var light;
 
 
 class Rectangle { //TODO: move to separate file
@@ -183,6 +184,47 @@ class MovingRectangle extends Rectangle {
 
 	render() {
 
+	}
+}
+
+class Light {
+	constructor(x, y) {
+		this.x = x || 0;
+		this.y = y || 0;
+
+	}
+
+	render() {
+		for (var i = 0; i < rectList.length; i++) {
+			var other = rectList[i];
+			var corners = [];
+			ctx.beginPath();
+			//figure out which corners are blocking light and remember them
+			if (!((this.x >= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y >= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //top left
+				corners.push({x: other.x, y: other.y});
+			}
+			if (!((this.x <= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y >= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //top right
+				corners.push({x: other.x + other.width, y: other.y});
+			}
+			if (!((this.x <= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y <= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //bottom right
+				corners.push({x: other.x + other.width, y: other.y + other.height});
+			}
+			if (!((this.x >= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y <= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //bottom left
+				corners.push({x: other.x, y: other.y + other.height});
+			}
+
+			//deactivate redundant corners
+			//how do i do this
+
+			ctx.moveTo(this.x, this.y);
+			ctx.lineTo(corners[0].x, corners[0].y);
+			ctx.lineTo(corners[1].x, corners[1].y);
+			ctx.lineTo(this.x, this.y);
+			ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+			ctx.fill();
+			ctx.stroke();
+
+		}
 	}
 }
 
@@ -363,7 +405,8 @@ window.onload = function() {
 
 	// get save data
 	load('default');
-	rectList.push(new Spike(64, 64, 32, 32));
+	light = new Light(100, 100);
+	//rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
@@ -394,7 +437,8 @@ function main() {
 	ctx.globalAlpha = 1;
 	drawPlayer();
 	drawMenu();
-	editor.showColorPalette();
+	//editor.showColorPalette();
+	light.render();
 
 }
 
