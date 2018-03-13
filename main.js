@@ -198,24 +198,52 @@ class Light {
 		for (var i = 0; i < rectList.length; i++) {
 			var other = rectList[i];
 			var corners = [];
+			var c0 = {x: other.x, y: other.y};
+			var c1 = {x: other.x + other.width, y: other.y};
+			var c2 = {x: other.x + other.width, y: other.y + other.height};
+			var c3 = {x: other.x, y: other.y + other.height};
+
+			//figure out which two corners are blocking light and remember them
+			if (this.x <= other.x) {
+				if (this.y <= other.y) { //down right
+					corners = [c1, c3];
+				} else if (this.y >= other.y && this.y <= other.y + other.height) { // right
+					corners = [c0, c3];
+				} else { //up right
+					corners = [c0, c2];
+				}
+			} else if (this.x >= other.x && this.x <= other.x + other.width) { //up or down
+				if (this.y <= other.y) { //down
+					corners = [c0, c1];
+				} else if (this.y >= other.y && this.y <= other.y + other.height) { //on top of the Light
+					corners = [c0, c2]; //TODO: handle when on top of light
+				} else { //up
+					corners = [c2, c3];
+				}
+			} else { //left
+				if (this.y <= other.y) { //down left
+					corners = [c0, c2];
+				} else if (this.y >= other.y && this.y <= other.y + other.height) { // left
+					corners = [c1, c2];
+				} else { //up left
+					corners = [c1, c3];
+				}
+			}
+
+			var angle0 = Math.atan((corners[0].y - this.y) / (corners[0].x - this.x));
+			var angle1 = Math.atan((corners[1].y - this.y) / (corners[1].x - this.x));
+			console.log(angle0 + "; " + angle1);
+
+			var edges = [{x: this.x, y: this.y}, {x: this.x, y: this.y}];
+			for (int j = 0; j < 2; j++) {
+				while (!new Rectangle(edges[j].x, edges[j].y).checkCollision() && edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0) {//working on
+					edges[j].x += Math.sin(angle0);
+				}
+			}
+
+
+			//actually draw the light
 			ctx.beginPath();
-			//figure out which corners are blocking light and remember them
-			if (!((this.x >= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y >= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //top left
-				corners.push({x: other.x, y: other.y});
-			}
-			if (!((this.x <= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y >= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //top right
-				corners.push({x: other.x + other.width, y: other.y});
-			}
-			if (!((this.x <= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y <= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //bottom right
-				corners.push({x: other.x + other.width, y: other.y + other.height});
-			}
-			if (!((this.x >= other.x || (this.x >= other.x && this.x <= other.x + other.width)) && (this.y <= other.y || (this.y >= other.y && this.y <= other.y + other.height)))) { //bottom left
-				corners.push({x: other.x, y: other.y + other.height});
-			}
-
-			//deactivate redundant corners
-			//how do i do this
-
 			ctx.moveTo(this.x, this.y);
 			ctx.lineTo(corners[0].x, corners[0].y);
 			ctx.lineTo(corners[1].x, corners[1].y);
@@ -405,7 +433,7 @@ window.onload = function() {
 
 	// get save data
 	load('default');
-	light = new Light(100, 100);
+	light = new Light(256, 256);
 	//rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
