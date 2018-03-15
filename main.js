@@ -230,29 +230,48 @@ class Light {
 				}
 			}
 
-			var angle0 = Math.atan((corners[0].y - this.y) / (corners[0].x - this.x));
-			var angle1 = Math.atan((corners[1].y - this.y) / (corners[1].x - this.x));
-			console.log(angle0 + "; " + angle1);
+			var angles = [Math.atan((corners[0].y - this.y) / (corners[0].x - this.x)), Math.atan((corners[1].y - this.y) / (corners[1].x - this.x))];
+			if (other.x < this.x) {
+				angles[0] += Math.PI;
+			}
+			if (other.x + other.width < this.x) {
+				angles[1] += Math.PI;
+			}
 
 			var edges = [{x: this.x, y: this.y}, {x: this.x, y: this.y}];
-			for (int j = 0; j < 2; j++) {
-				while (!new Rectangle(edges[j].x, edges[j].y).checkCollision() && edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0) {//working on
-					edges[j].x += Math.sin(angle0);
+			for (var j = 0; j < 2; j++) {
+				var check = new Rectangle(edges[j].x, edges[j].y).checkCollision();
+				while (!check && edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0 && edges[j].y < canvas.height) {//working on
+					edges[j].y += Math.sin(angles[j]);
+					edges[j].x += Math.cos(angles[j]);
+				}
+				if (check !== false) {
+
 				}
 			}
 
 
-			//actually draw the light
+			//actually draw the dark
 			ctx.beginPath();
-			ctx.moveTo(this.x, this.y);
-			ctx.lineTo(corners[0].x, corners[0].y);
+			ctx.moveTo(edges[0].x, edges[0].y);
+			if (other.y + other.height < this.y) {
+				ctx.lineTo(edges[1].x, edges[0].y);
+			} else //if (other.y > this.y)
+			{
+				ctx.lineTo(edges[0].x, edges[1].y);
+			} 
+			ctx.lineTo(edges[1].x, edges[1].y);
 			ctx.lineTo(corners[1].x, corners[1].y);
-			ctx.lineTo(this.x, this.y);
-			ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+			ctx.lineTo(corners[0].x, corners[0].y);
+			ctx.lineTo(edges[0].x, edges[0].y);
+			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
 			ctx.fill();
+			ctx.fillStyle = "#000000";
+			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 			ctx.stroke();
 
 		}
+
 	}
 }
 
