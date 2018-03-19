@@ -8,7 +8,7 @@ var keysDown = [];
 var rectList = [];
 var menuList = [];
 var state;
-var gridSize = 64;
+var gridSize = 16;
 var fps = 0, prevFps = 0;
 var prevTime = Date.now();
 var light;
@@ -195,9 +195,10 @@ class Light {
 	}
 
 	render() {
-		this.x = p1.x;
-		this.y = p1.y;
+		//this.x = p1.x + p1.width / 2;
+		//this.y = p1.y + p1.height / 2;
 		for (var i = 0; i < rectList.length; i++) {
+
 			var other = rectList[i];
 			var corners = [];
 			var c0 = {x: other.x, y: other.y};
@@ -232,41 +233,106 @@ class Light {
 				}
 			}
 
-			var angles = [Math.atan2((corners[0].y - this.y) , (corners[0].x - this.x)), Math.atan2((corners[1].y - this.y) , (corners[1].x - this.x))];
-
 			var edges = [{x: this.x, y: this.y}, {x: this.x, y: this.y}];
-			for (var j = 0; j < 2; j++) {
-				var check = new Rectangle(edges[j].x, edges[j].y).checkCollision();
-				while (!check  && edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0 && edges[j].y < canvas.height) {//working on
-					edges[j].y += Math.sin(angles[j]);
-					edges[j].x += Math.cos(angles[j]);
-				}
-				if (check !== false) {
+			var check;
 
+			for (var j = 0; j < 2; j++) {
+				var dx = Math.cos(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
+				var dy = Math.sin(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
+				while (edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0 && edges[j].y < canvas.height) {//working on
+					edges[j].x += dx;
+					edges[j].y += dy;
+
+					check = new Rectangle(edges[j].x, edges[j].y, 1, 1).checkCollision();
+
+					if (check !== false) {
+						if (check === other) {
+							edges[j].reached = true;
+
+						} else {
+							ctx.fillRect(edges[j].x - 5, edges[j].y - 5, 10, 10);
+							//did it hit a horizontal or vertical edge?
+							if (new Rectangle(edges[j].x, edges[j].y - dy, 1, 1).checkCollision() === check) {
+								//hit a vertical edge
+								if (dy > 0) {
+									edges[j].dir = 3; //down
+								} else {
+									edges[j].dir = 1; //up
+								}
+							} else {
+								//hit a horizontal edge OR TODO: the edge of the map
+								if (dx > 0) {
+									edges[j].dir = 0; //right
+								} else {
+									edges[j].dir = 2; //left
+								}
+							}
+							//TODO: add a third/fourth vertex because it hit a wall
+							break;
+						}
+					}
 				}
 			}
+
 
 
 			//actually draw the dark
 			ctx.beginPath();
 			ctx.moveTo(edges[0].x, edges[0].y);
 			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-			ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
 
 			ctx.lineTo(edges[1].x, edges[1].y);
-			ctx.lineTo(corners[1].x, corners[1].y);
-			ctx.lineTo(corners[0].x, corners[0].y);
+
+			if (edges[1].reached && edges[0].reached) {
+				ctx.lineTo(corners[1].x, corners[1].y);
+				ctx.lineTo(corners[0].x, corners[0].y);
+			} else {
+				//one of the corners is not exposed to light - determine where to cast the shadow
+			}
 			ctx.lineTo(edges[0].x, edges[0].y);
 
 			ctx.fill();
 			ctx.fillStyle = "#000000";
 			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
-			ctx.stroke();
+			//ctx.stroke();
 
 		}
 
 	}
 }
+
+class Light2 {
+	constructor(x, y) {
+		this.x = x || 0;
+		this.y = y || 0;
+	}
+
+	render() {
+		//find points
+		for (var degree = 0; degree <= Math.PI * 2; degree += Math.PI / 180) {
+			var dx = Math.cos(degree);
+			var dy = Math.sin(degree);
+			var ray = {x: 0, y: 0};
+			var check = false;
+			var points = [];
+			ray.x = this.x;
+			ray.y = this.y;
+			while (ray.x > 0 && ray.x < canvas.width && ray.y > 0 && ray.y < canvas.height && check === false) {//working on
+				ray.x += dx;
+				ray.y += dy;
+
+				check = new Rectangle(ray.x, ray.y, 1, 1).checkCollision();
+			}
+			ctx.lineTo(ray.x, ray.y);
+		}
+
+		//draw lines
+		ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+		ctx.fill();
+	}
+}
+
+
 
 class Editor {
 	constructor() {
@@ -445,7 +511,7 @@ window.onload = function() {
 
 	// get save data
 	load('default');
-	light = new Light(256, 256);
+	light = new Light2(256, 256);
 	//rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
