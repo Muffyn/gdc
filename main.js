@@ -11,7 +11,7 @@ var state;
 var gridSize = 16;
 var fps = 0, prevFps = 0;
 var prevTime = Date.now();
-var light;
+var light, light2;
 
 
 class Rectangle { //TODO: move to separate file
@@ -195,11 +195,40 @@ class Light {
 	}
 
 	render() {
-		//this.x = p1.x + p1.width / 2;
-		//this.y = p1.y + p1.height / 2;
+		this.x = p1.x + p1.width / 2;
+		this.y = p1.y + p1.height / 2;
 		for (var i = 0; i < rectList.length; i++) {
 
 			var other = rectList[i];
+			var corners = this.getCorners(other);
+			var edges = [this.getEdge(other, corners, 0), this.getEdge(other, corners, 1)];
+
+
+
+			//actually draw the dark
+			ctx.beginPath();
+			ctx.moveTo(edges[0].x, edges[0].y);
+			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+
+			ctx.lineTo(edges[1].x, edges[1].y);
+
+			if (edges[1].reached || edges[0].reached) {
+				ctx.lineTo(corners[1].x, corners[1].y);
+				ctx.lineTo(corners[0].x, corners[0].y);
+			} else {
+				//TODO: one of the corners is not exposed to light - determine where to cast the shadow
+			}
+			ctx.lineTo(edges[0].x, edges[0].y);
+
+			ctx.fill();
+			ctx.fillStyle = "#000000";
+			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
+			//ctx.stroke();
+
+		}
+	}
+
+		getCorners(other) {
 			var corners = [];
 			var c0 = {x: other.x, y: other.y};
 			var c1 = {x: other.x + other.width, y: other.y};
@@ -233,72 +262,37 @@ class Light {
 				}
 			}
 
-			var edges = [{x: this.x, y: this.y}, {x: this.x, y: this.y}];
+			return corners;
+		}
+
+		getEdge(other, corners, j) {
+			var edge = {x: this.x, y: this.y, reached: false};
 			var check;
 
-			for (var j = 0; j < 2; j++) {
-				var dx = Math.cos(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
-				var dy = Math.sin(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
-				while (edges[j].x > 0 && edges[j].x < canvas.width && edges[j].y > 0 && edges[j].y < canvas.height) {//working on
-					edges[j].x += dx;
-					edges[j].y += dy;
+			var dx = Math.cos(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
+			var dy = Math.sin(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
+			while (edge.x > 0 && edge.x < canvas.width && edge.y > 0 && edge.y < canvas.height) {//working on
+				edge.x += dx;
+				edge.y += dy;
 
-					check = new Rectangle(edges[j].x, edges[j].y, 1, 1).checkCollision();
+				check = new Rectangle(edge.x, edge.y, 1, 1).checkCollision();
 
-					if (check !== false) {
-						if (check === other) {
-							edges[j].reached = true;
+				if (check !== false) {
+					if (check === other) {
+						edge.reached = true;
 
-						} else {
-							ctx.fillRect(edges[j].x - 5, edges[j].y - 5, 10, 10);
-							//did it hit a horizontal or vertical edge?
-							if (new Rectangle(edges[j].x, edges[j].y - dy, 1, 1).checkCollision() === check) {
-								//hit a vertical edge
-								if (dy > 0) {
-									edges[j].dir = 3; //down
-								} else {
-									edges[j].dir = 1; //up
-								}
-							} else {
-								//hit a horizontal edge OR TODO: the edge of the map
-								if (dx > 0) {
-									edges[j].dir = 0; //right
-								} else {
-									edges[j].dir = 2; //left
-								}
-							}
-							//TODO: add a third/fourth vertex because it hit a wall
-							break;
+					} else {
+						if (edge.reached === false && other.checkCollision(check) === false) {
+							ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
+							return this.getEdge(check, this.getCorners(check), j);
 						}
 					}
 				}
 			}
-
-
-
-			//actually draw the dark
-			ctx.beginPath();
-			ctx.moveTo(edges[0].x, edges[0].y);
-			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-
-			ctx.lineTo(edges[1].x, edges[1].y);
-
-			if (edges[1].reached && edges[0].reached) {
-				ctx.lineTo(corners[1].x, corners[1].y);
-				ctx.lineTo(corners[0].x, corners[0].y);
-			} else {
-				//one of the corners is not exposed to light - determine where to cast the shadow
-			}
-			ctx.lineTo(edges[0].x, edges[0].y);
-
-			ctx.fill();
-			ctx.fillStyle = "#000000";
-			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
-			//ctx.stroke();
-
+			//edge of map reached - add fifth
+			return edge;
 		}
 
-	}
 }
 
 class Light2 {
@@ -309,7 +303,8 @@ class Light2 {
 
 	render() {
 		//find points
-		for (var degree = 0; degree <= Math.PI * 2; degree += Math.PI / 180) {
+		ctx.beginPath();
+		for (var degree = 0; degree <= Math.PI * 2; degree += Math.PI / 100) {
 			var dx = Math.cos(degree);
 			var dy = Math.sin(degree);
 			var ray = {x: 0, y: 0};
@@ -327,8 +322,11 @@ class Light2 {
 		}
 
 		//draw lines
-		ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+		ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
 		ctx.fill();
+		//ctx.stroke();
+		ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+		ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 	}
 }
 
@@ -511,7 +509,8 @@ window.onload = function() {
 
 	// get save data
 	load('default');
-	light = new Light2(256, 256);
+	light = new Light(256, 256);
+	light2 = new Light2(512, 512);
 	//rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
@@ -533,6 +532,7 @@ function main() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
 	drawGrid();
+  	light.render();
 
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
@@ -544,7 +544,7 @@ function main() {
 	drawPlayer();
 	drawMenu();
 	//editor.showColorPalette();
-	light.render();
+
 
 }
 
