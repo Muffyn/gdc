@@ -202,14 +202,33 @@ class Light {
 			var other = rectList[i];
 			var corners = this.getCorners(other);
 			var edges = [this.getEdge(other, corners, 0), this.getEdge(other, corners, 1)];
+			var vertices = [corners[0], corners[1], edges[1], edges[0]];
+			this.handleEdges(vertices);
+			var angles = [];
+			for (var j = 0; j < vertices.length; j++) {
+				angles.push(Math.atan2(vertices[j].y, vertices[j].x));
+			}
+			angles.sort();
 
-
+			var sortedVertices = [];
+			for (var j = 0; j < angles.length; j++) {
+				for (var k = 0; k < vertices.length; k++) {
+					if (angles[j] === Math.atan2(vertices[k].y, vertices[k].x)) {
+						sortedVertices.push(vertices[k]);
+					}
+				}
+			}
 
 			//actually draw the dark
 			ctx.beginPath();
-			ctx.moveTo(edges[0].x, edges[0].y);
+			ctx.moveTo(sortedVertices[sortedVertices.length - 1].x, sortedVertices[sortedVertices.length - 1].y);
 			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+				ctx.fillRect(sortedVertices[0].x, sortedVertices[0].y, 10, 10); //workin on this
+			for (var j = 0; j < sortedVertices.length; j++) {
+				ctx.lineTo(sortedVertices[j].x, sortedVertices[j].y);
 
+			}
+			/*
 			ctx.lineTo(edges[1].x, edges[1].y);
 
 			if (edges[1].reached || edges[0].reached) {
@@ -219,8 +238,10 @@ class Light {
 				//TODO: one of the corners is not exposed to light - determine where to cast the shadow
 			}
 			ctx.lineTo(edges[0].x, edges[0].y);
+			*/
 
 			ctx.fill();
+			//render the light
 			ctx.fillStyle = "#000000";
 			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 			//ctx.stroke();
@@ -284,13 +305,29 @@ class Light {
 					} else {
 						if (edge.reached === false && other.checkCollision(check) === false) {
 							ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
-							return this.getEdge(check, this.getCorners(check), j);
+							//return this.getEdge(check, this.getCorners(check), j);
 						}
 					}
 				}
 			}
-			//edge of map reached - add fifth
+
 			return edge;
+		}
+
+		handleEdges(vertices) {
+			if (vertices[2].x < 0 || vertices[2].x > canvas.width) {
+				if (vertices[3].x < 0 || vertices[3].x > canvas.width) {
+					if (vertices[2].y > this.y) { //bot left + bot right
+						vertices.push({x:0, y: canvas.height});
+						vertices.push({x:canvas.width, y:canvas.height});
+					} else { //top left + top right
+						vertices.push({x:canvas.width, y:0});
+						vertices.push({x:0, y:0});
+					}
+				} else { //(left || right && top || bottom)
+
+				}
+			}
 		}
 
 }
@@ -329,8 +366,6 @@ class Light2 {
 		ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 	}
 }
-
-
 
 class Editor {
 	constructor() {
@@ -532,7 +567,7 @@ function main() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
 	drawGrid();
-  	light.render();
+
 
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
@@ -544,7 +579,7 @@ function main() {
 	drawPlayer();
 	drawMenu();
 	//editor.showColorPalette();
-
+  light.render();
 
 }
 
