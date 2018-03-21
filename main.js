@@ -202,30 +202,19 @@ class Light {
 			var other = rectList[i];
 			var corners = this.getCorners(other);
 			var edges = [this.getEdge(other, corners, 0), this.getEdge(other, corners, 1)];
+			if (edges[0].reached === false && edges[1].reached === false) {
+				break;
+			}
 			var vertices = [corners[0], corners[1], edges[1], edges[0]];
-			this.handleEdges(vertices);
-			var angles = [];
-			for (var j = 0; j < vertices.length; j++) {
-				angles.push(Math.atan2(vertices[j].y, vertices[j].x));
-			}
-			angles.sort();
+			//this.handleEdges(vertices);
+			//this.sortVertices(vertices);
 
-			var sortedVertices = [];
-			for (var j = 0; j < angles.length; j++) {
-				for (var k = 0; k < vertices.length; k++) {
-					if (angles[j] === Math.atan2(vertices[k].y, vertices[k].x)) {
-						sortedVertices.push(vertices[k]);
-					}
-				}
-			}
-
-			//actually draw the dark
 			ctx.beginPath();
-			ctx.moveTo(sortedVertices[sortedVertices.length - 1].x, sortedVertices[sortedVertices.length - 1].y);
+			ctx.moveTo(vertices[vertices.length - 1].x, vertices[vertices.length - 1].y);
 			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-				ctx.fillRect(sortedVertices[0].x, sortedVertices[0].y, 10, 10); //workin on this
-			for (var j = 0; j < sortedVertices.length; j++) {
-				ctx.lineTo(sortedVertices[j].x, sortedVertices[j].y);
+
+			for (var j = 0; j < vertices.length; j++) {
+				ctx.lineTo(vertices[j].x, vertices[j].y);
 
 			}
 			/*
@@ -304,8 +293,9 @@ class Light {
 
 					} else {
 						if (edge.reached === false && other.checkCollision(check) === false) {
-							ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
+							//ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
 							//return this.getEdge(check, this.getCorners(check), j);
+
 						}
 					}
 				}
@@ -328,6 +318,23 @@ class Light {
 
 				}
 			}
+		}
+
+		sortVertices(vertices) {
+			//find midpoints to compare to
+			var mid = {x: 0, y: 0};
+			for (var j = 0; j < vertices.length; j++) {
+				mid.x += vertices[j].x;
+				mid.y += vertices[j].y;
+			}
+			mid.x /= vertices.length;
+			mid.y /= vertices.length;
+
+			//sort by angle
+			vertices.sort(function (a, b) { //shoutout to the docs for showing me this
+  			return Math.atan2(a.y - mid.y, a.x - mid.x) - Math.atan2(b.y - mid.y, b.x - mid.x);
+			});
+			vertices = vertices.sort();
 		}
 
 }
