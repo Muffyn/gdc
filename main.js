@@ -200,41 +200,27 @@ class Light {
 		for (var i = 0; i < rectList.length; i++) {
 
 			var other = rectList[i];
-			var corners = this.getCorners(other);
-			var edges = [this.getEdge(other, corners, 0), this.getEdge(other, corners, 1)];
-			if (edges[0].reached === false && edges[1].reached === false) {
-				break;
+			var vertices = this.getCorners(other);
+			var edges = [this.getEdge(other, vertices, 0), this.getEdge(other, vertices, 1)];
+
+			if (edges[0].reached && edges[1].reached) {
+				vertices.push(edges[0], edges[1]);
+				//this.handleEdges(vertices);
+				this.sortVertices(vertices);
+
+				ctx.beginPath();
+				ctx.moveTo(vertices[vertices.length - 1].x, vertices[vertices.length - 1].y);
+				ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+
+				for (var j = 0; j < vertices.length; j++) {
+					ctx.lineTo(vertices[j].x, vertices[j].y);
+				}
+
+				ctx.fill();
+				//render the light
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 			}
-			var vertices = [corners[0], corners[1], edges[1], edges[0]];
-			//this.handleEdges(vertices);
-			//this.sortVertices(vertices);
-
-			ctx.beginPath();
-			ctx.moveTo(vertices[vertices.length - 1].x, vertices[vertices.length - 1].y);
-			ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-
-			for (var j = 0; j < vertices.length; j++) {
-				ctx.lineTo(vertices[j].x, vertices[j].y);
-
-			}
-			/*
-			ctx.lineTo(edges[1].x, edges[1].y);
-
-			if (edges[1].reached || edges[0].reached) {
-				ctx.lineTo(corners[1].x, corners[1].y);
-				ctx.lineTo(corners[0].x, corners[0].y);
-			} else {
-				//TODO: one of the corners is not exposed to light - determine where to cast the shadow
-			}
-			ctx.lineTo(edges[0].x, edges[0].y);
-			*/
-
-			ctx.fill();
-			//render the light
-			ctx.fillStyle = "#000000";
-			ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
-			//ctx.stroke();
-
 		}
 	}
 
@@ -275,32 +261,42 @@ class Light {
 			return corners;
 		}
 
-		getEdge(other, corners, j) {
+		getEdge(other, vertices, j) {
 			var edge = {x: this.x, y: this.y, reached: false};
 			var check;
 
-			var dx = Math.cos(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
-			var dy = Math.sin(Math.atan2((corners[j].y - this.y), (corners[j].x - this.x)));
+			var dx = Math.cos(Math.atan2((vertices[j].y - this.y), (vertices[j].x - this.x)));
+			var dy = Math.sin(Math.atan2((vertices[j].y - this.y), (vertices[j].x - this.x)));
 			while (edge.x > 0 && edge.x < canvas.width && edge.y > 0 && edge.y < canvas.height) {//working on
 				edge.x += dx;
 				edge.y += dy;
+				//ctx.fillRect(edge.x - .15, edge.y - .15, .3, .3);
 
-				check = new Rectangle(edge.x, edge.y, 1, 1).checkCollision();
+				check = new Rectangle(edge.x - .5, edge.y - .5, 1, 1).checkCollision();
 
 				if (check !== false) {
 					if (check === other) {
 						edge.reached = true;
 
+
 					} else {
-						if (edge.reached === false && other.checkCollision(check) === false) {
-							//ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
-							//return this.getEdge(check, this.getCorners(check), j);
+						if (edge.reached  && other.checkCollision(check) === false) {
+							ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
+							//vertices.push(edge);
+							vertices.push(this.getCorners(check)[1]);
+							vertices.push(this.getEdge(check, this.getCorners(check), 1));
+
+							break;
 
 						}
 					}
 				}
 			}
+			if (edge.x < 0) {
+				if (dx < 0) {
 
+				}
+			}
 			return edge;
 		}
 
@@ -573,7 +569,7 @@ function main() {
 	//render
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
-	drawGrid();
+	//drawGrid();
 
 
 	for (var i = rectList.length - 1; i >= 0; i--) {
@@ -583,7 +579,7 @@ function main() {
 	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
 	ctx.globalAlpha = 1;
-	drawPlayer();
+	//drawPlayer();
 	drawMenu();
 	//editor.showColorPalette();
   light.render();
