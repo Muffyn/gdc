@@ -280,10 +280,10 @@ class Light {
 
 
 					} else {
-						if (edge.reached  && other.checkCollision(check) === false) {
+						if (edge.reached && other.checkCollision(check) === false) {
 							ctx.fillRect(edge.x - 5, edge.y - 5, 10, 10);
 							//vertices.push(edge);
-							vertices.push(this.getCorners(check)[1]);
+							vertices.push(this.getCorners(check)[1]); //TODO: change from 1 to j somehow; only works with things up right from it
 							vertices.push(this.getEdge(check, this.getCorners(check), 1));
 
 							break;
@@ -292,11 +292,21 @@ class Light {
 					}
 				}
 			}
-			if (edge.x < 0) {
-				if (dx < 0) {
-
+			/* fix corners of the map attempt #3 aaaaaaaa!!!!!
+			if (edge.x < 0 || edge.x > canvas.width) {
+				if (dy < 0) {
+					vertices.push({x:edge.x, y: 0})
+				} else {
+					vertices.push({x:edge.x, y: canvas.height})
 				}
-			}
+			} else if (edge.y < 0 || edge.y > canvas.height) {
+				if (dx < 0) {
+					vertices.push({x:0, y: edge.y})
+				} else {
+					vertices.push({x:canvas.width, y: edge.y})
+				}
+			} */
+
 			return edge;
 		}
 
@@ -579,10 +589,11 @@ function main() {
 	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
 	ctx.globalAlpha = 1;
-	//drawPlayer();
+	drawPlayer();
 	drawMenu();
 	//editor.showColorPalette();
-  light.render();
+	  light.render();
+
 
 }
 
@@ -742,7 +753,7 @@ function load(saveKey) {
 
 	if (state === null) { //no save found
 		rectList = [];
-		rectList.push(new Rectangle(0, gridSize));
+		rectList.push(new Rectangle(0, gridSize * 2, gridSize * 2, gridSize * 2));
 		p1.setX(0);
 		p1.setY(0);
 		state = {};
