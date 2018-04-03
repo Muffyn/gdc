@@ -29,6 +29,8 @@ class Rectangle { //TODO: move to separate file
 		this.onGrid = true;
 		this.sprite = 0;
 		this.spriteList = ["", "wood", "stone"];
+		this.collidable = true;
+		this.editable = true;
 	}
 	setX(x) {
 		if (x < 0) this.x = 0;
@@ -48,22 +50,24 @@ class Rectangle { //TODO: move to separate file
 	getHeight() { return this.height; }
 
 	checkCollision(other) {
-		if (arguments[0] === undefined) {
-			for (var i = 0; i < rectList.length; i++) {
-		  	if (this.x + this.width > rectList[i].x &&
-		  		this.y + this.height > rectList[i].y &&
-					this.x < rectList[i].x + rectList[i].width &&
-					this.y < rectList[i].y + rectList[i].height)
-					return rectList[i];
-				}
+		if (this.collidable) {
+			if (arguments[0] === undefined) {
+				for (var i = 0; i < rectList.length; i++) {
+			  	if (this.x + this.width > rectList[i].x &&
+			  		this.y + this.height > rectList[i].y &&
+						this.x < rectList[i].x + rectList[i].width &&
+						this.y < rectList[i].y + rectList[i].height)
+						return rectList[i];
+					}
+					return false;
+			} else {
+				if (this.x + this.width > other.x &&
+					this.y + this.height > other.y &&
+					this.x < other.x + other.width &&
+					this.y < other.y + other.height)
+					return other;
 				return false;
-		} else {
-			if (this.x + this.width > other.x &&
-				this.y + this.height > other.y &&
-				this.x < other.x + other.width &&
-				this.y < other.y + other.height)
-				return other;
-			return false;
+			}
 		}
 	}
 
@@ -167,23 +171,56 @@ class Spike extends Rectangle {
 }
 
 class MovingRectangle extends Rectangle {
+	constructor(x, y, width, height, color, distance, speed) {
+		super(x, y, width, height, color);
+		this.internal = new Rectangle(x, y, width, height, color);
+		this.internal.editable = false;
+		this.distance = distance;
+		this.min = new MovingRectangleNode(x, y, width, height, color);
+		this.max = new MovingRectangleNode(x + distance - width, y + 32, width, height, color);
+		this.activeNode = this.max;
+		this.speed = speed;
+
+	}
 
 	act() {
-		this.distance = 64;
-		if (this.x < 128) {
-			this.direction = 1;
-		} else if (this.x > 256) {
-			this.direction = 0;
+		//TODO: check y as well
+		if (this.max.x < this.min.x) {
+			var temp = this.min;
+			this.min = this.max;
+			this.max = temp;
 		}
-		if (this.direction) {
-			this.setX(this.getX() + 1);
-		} else {
-			this.setX(this.getX() - 1);
+		if (this.internal.x <= this.min.x) {
+			this.activeNode = this.max;
+		} else if (this.internal.x + this.internal.width >= this.max.x + this.max.width) {
+			this.activeNode = this.min;
 		}
+
+		this.internal.setX(this.internal.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.internal.y, this.activeNode.x - this.internal.x)));
+		this.internal.setY(this.internal.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.internal.y, this.activeNode.x - this.internal.x)));
+
 	}
 
 	render() {
+		ctx.fillStyle = this.color;
+		ctx.fillRect(this.internal.x, this.internal.y, this.internal.width, this.internal.height);
+		this.min.render();
+		this.max.render();
+	}
+}
 
+class MovingRectangleNode extends Rectangle {
+	constructor(x, y, width, height, color, distance, speed) {
+		super(x, y, width, height, color);
+		this.color = "rgba(" + parseInt(this.color.substring(1, 3), 16) +
+												", " + parseInt(this.color.substring(3, 5), 16) +
+												", " + parseInt(this.color.substring(5, 7), 16) + ", 0.5)"; //transparency hack
+		this.collidable = false;
+	}
+
+	render() {
+		ctx.fillStyle = this.color;
+		ctx.fillRect(this.x, this.y, this.width, this.height);
 	}
 }
 
@@ -203,9 +240,10 @@ class Light {
 			var vertices = this.getCorners(other);
 			var edges = [this.getEdge(other, vertices, 0), this.getEdge(other, vertices, 1)];
 
+
 			if (edges[0].reached && edges[1].reached) {
 				vertices.push(edges[0], edges[1]);
-				//this.handleEdges(vertices);
+				this.handleEdges(edges, vertices);
 				this.sortVertices(vertices);
 
 				ctx.beginPath();
@@ -310,18 +348,16 @@ class Light {
 			return edge;
 		}
 
-		handleEdges(vertices) {
-			if (vertices[2].x < 0 || vertices[2].x > canvas.width) {
-				if (vertices[3].x < 0 || vertices[3].x > canvas.width) {
-					if (vertices[2].y > this.y) { //bot left + bot right
-						vertices.push({x:0, y: canvas.height});
-						vertices.push({x:canvas.width, y:canvas.height});
-					} else { //top left + top right
-						vertices.push({x:canvas.width, y:0});
-						vertices.push({x:0, y:0});
-					}
-				} else { //(left || right && top || bottom)
+		handleEdges(edges, vertices) {
+			if (edges[0].x < 0 && edges[1].x < 0) { //L+L
 
+			} else if ((edges[0].x < 0 && edges[1].x > canvas.width) || (edges[1].x < 0 && edges[0].x > canvas.width)) { //L+R
+				if (edges[0].y < this.y) {
+					vertices.push({x: 0, y: 0});
+					vertices.push({x: canvas.width, y: 0});
+				} else if (edges[0].y > this.y) {
+					vertices.push({x: 0, y: canvas.height});
+					vertices.push({x: canvas.width, y: canvas.height});
 				}
 			}
 		}
@@ -550,6 +586,7 @@ class Editor {
 
 var p1 = new Rectangle(20, 20, gridSize * 2, gridSize * 2);
 var editor = new Editor();
+var moving = new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1);
 
 window.onload = function() {
 	canvas = document.getElementById("canvas");
@@ -557,8 +594,10 @@ window.onload = function() {
 
 	// get save data
 	load('default');
+
 	light = new Light(256, 256);
 	light2 = new Light2(512, 512);
+
 	//rectList.push(new Spike(64, 64, 32, 32));
 
 	document.addEventListener("keydown", keydown);
@@ -575,16 +614,17 @@ window.onload = function() {
 function main() {
 	//update
 	p1.move();
+	moving.act();
 
 	//render
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
 	//drawGrid();
 
-
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
+	moving.render();
 
 	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
@@ -592,7 +632,7 @@ function main() {
 	drawPlayer();
 	drawMenu();
 	//editor.showColorPalette();
-	  light.render();
+	//light.render();
 
 
 }
