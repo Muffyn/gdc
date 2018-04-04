@@ -22,6 +22,7 @@ class Rectangle { //TODO: move to separate file
 		this.height = height || gridSize;
 		this.xVel = 3;
 		this.yVel = 0;
+		this.type = "Rectangle";
 		this.jumpHeight = 8;
 		this.gravity = 0.5;
 		this.color = color || getRandomColor();
@@ -31,6 +32,7 @@ class Rectangle { //TODO: move to separate file
 		this.spriteList = ["", "wood", "stone"];
 		this.collidable = true;
 		this.editable = true;
+
 	}
 	setX(x) {
 		if (x < 0) this.x = 0;
@@ -171,54 +173,69 @@ class Spike extends Rectangle {
 }
 
 class MovingRectangle extends Rectangle {
-	constructor(x, y, width, height, color, distance, speed) {
+	constructor(x, y, width, height, color, speed, min, max) {
 		super(x, y, width, height, color);
-		this.internal = new Rectangle(x, y, width, height, color);
-		this.internal.editable = false;
-		this.distance = distance;
-		this.min = new MovingRectangleNode(x, y, width, height, color);
-		this.max = new MovingRectangleNode(x + distance - width, y + 32, width, height, color);
+		this.editable = false;
+		this.speed = speed || 1;
+		if (arguments[5] === undefined) {
+			this.min = new MovingRectangleNode(x, y, width, height, color, this);
+			this.max = new MovingRectangleNode(x + distance - width, y + 32, width, height, color, this);
+		} else {
+			this.min = new MovingRectangleNode(min.x, min.y, width, height, color, this);
+			this.max = new MovingRectangleNode(max.x, max.y, width, height, color, this);
+		}
 		this.activeNode = this.max;
-		this.speed = speed;
+		this.type = "MovingRectangle";
 
 	}
 
 	act() {
-		//TODO: check y as well
+		//TODO: check y as well maybe
 		if (this.max.x < this.min.x) {
 			var temp = this.min;
 			this.min = this.max;
 			this.max = temp;
 		}
-		if (this.internal.x <= this.min.x) {
+		if (this.x <= this.min.x) {
 			this.activeNode = this.max;
-		} else if (this.internal.x + this.internal.width >= this.max.x + this.max.width) {
+		} else if (this.x + this.width >= this.max.x + this.max.width) {
 			this.activeNode = this.min;
 		}
 
-		this.internal.setX(this.internal.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.internal.y, this.activeNode.x - this.internal.x)));
-		this.internal.setY(this.internal.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.internal.y, this.activeNode.x - this.internal.x)));
+		this.setX(this.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+		this.setY(this.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
 
 	}
 
 	render() {
+		this.min.width = this.width;
+		this.min.height = this.height;
+		this.max.width = this.width;
+		this.max.height = this.height;
 		ctx.fillStyle = this.color;
-		ctx.fillRect(this.internal.x, this.internal.y, this.internal.width, this.internal.height);
-		this.min.render();
-		this.max.render();
+		ctx.fillRect(this.x, this.y, this.width, this.height);
+
+		//if (editor.active === this) {
+			this.min.render();
+			this.max.render();
+		//}
 	}
 }
 
 class MovingRectangleNode extends Rectangle {
-	constructor(x, y, width, height, color, distance, speed) {
+	constructor(x, y, width, height, color, parent) {
 		super(x, y, width, height, color);
 		this.color = "rgba(" + parseInt(this.color.substring(1, 3), 16) +
 												", " + parseInt(this.color.substring(3, 5), 16) +
-												", " + parseInt(this.color.substring(5, 7), 16) + ", 0.5)"; //transparency hack
+												", " + parseInt(this.color.substring(5, 7), 16) + ", 0.25)"; //transparency hack
 		this.collidable = false;
+		rectList.push(this);
+		//this.parent = parent;
+		this.type = "MovingRectangleNode";
 	}
 
 	render() {
+
 		ctx.fillStyle = this.color;
 		ctx.fillRect(this.x, this.y, this.width, this.height);
 	}
@@ -443,11 +460,13 @@ class Editor {
 
 	removeActive() {
 		//fix where the player is TODO: make it take direction into account
-		if (this.active.checkCollision(p1)) {
-			p1.y = this.active.y - p1.height;
+		if (this.active !== false) {
+			if (this.active.checkCollision(p1)) {
+				p1.y = this.active.y - p1.height;
+			}
+			this.shadow.color = 'rgba(00, 00, 00, 0)';
+			this.active = false;
 		}
-		this.shadow.color = 'rgba(00, 00, 00, 0)';
-		this.active = false;
 	}
 
 	move(e) { //TODO: come up with more elegant way to resize
@@ -586,7 +605,7 @@ class Editor {
 
 var p1 = new Rectangle(20, 20, gridSize * 2, gridSize * 2);
 var editor = new Editor();
-var moving = new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1);
+var moving;
 
 window.onload = function() {
 	canvas = document.getElementById("canvas");
@@ -597,8 +616,10 @@ window.onload = function() {
 
 	light = new Light(256, 256);
 	light2 = new Light2(512, 512);
+	//moving = new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1);
+	//rectList.push(moving);
 
-	//rectList.push(new Spike(64, 64, 32, 32));
+	//rectList.push(new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1));
 
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
@@ -614,8 +635,11 @@ window.onload = function() {
 function main() {
 	//update
 	p1.move();
-	moving.act();
-
+	for (var i = 0; i < rectList.length; i++) {
+		if (rectList[i] instanceof MovingRectangle) {
+			rectList[i].act();
+		}
+	}
 	//render
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	//drawBG();
@@ -624,7 +648,6 @@ function main() {
 	for (var i = rectList.length - 1; i >= 0; i--) {
 		rectList[i].render();
 	}
-	moving.render();
 
 	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
@@ -801,9 +824,16 @@ function load(saveKey) {
 	} else {
 		rectList = [];
 		for (var i = 0; i < state.rectList.length; i++) {
-			rectList.push(new Rectangle(state.rectList[i].x, state.rectList[i].y, state.rectList[i].width, state.rectList[i].height, state.rectList[i].color));
+			var check = state.rectList[i];
+			console.log(state.rectList);
+			if (check.type === "Rectangle") {
+				rectList.push(new Rectangle(check.x, check.y, check.width, check.height, check.color));
+			} else if (check.type === "MovingRectangle") {
+				rectList.push(new MovingRectangle(check.x, check.y, check.width, check.height, check.color, check.speed, check.min, check.max));
+			}
 		}
 	}
+	console.log(rectList);
 }
 
 window.onunload = function() {
