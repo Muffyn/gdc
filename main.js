@@ -20,13 +20,8 @@ class Rectangle { //TODO: move to separate file
 		this.y = y || 0;
 		this.width = width || gridSize;
 		this.height = height || gridSize;
-		this.xVel = 3;
-		this.yVel = 0;
 		this.type = "Rectangle";
-		this.jumpHeight = 8;
-		this.gravity = 0.5;
 		this.color = color || getRandomColor();
-		this.inAir = false;
 		this.onGrid = true;
 		this.sprite = 0;
 		this.spriteList = ["", "wood", "stone"];
@@ -58,30 +53,56 @@ class Rectangle { //TODO: move to separate file
 			  	if (this.x + this.width > rectList[i].x &&
 			  		this.y + this.height > rectList[i].y &&
 						this.x < rectList[i].x + rectList[i].width &&
-						this.y < rectList[i].y + rectList[i].height)
-						return rectList[i];
+						this.y < rectList[i].y + rectList[i].height) {
+							return rectList[i];
+						}
+
 					}
-					return false;
 			} else {
 				if (this.x + this.width > other.x &&
 					this.y + this.height > other.y &&
 					this.x < other.x + other.width &&
 					this.y < other.y + other.height)
 					return other;
-				return false;
+
 			}
 		}
+		return false;
 	}
 
-	move() { //TODO: convert to actual physics LOL
+	render() {
+		if (this.spriteList[this.sprite] !== "") {
+			ctx.drawImage(document.getElementById(this.spriteList[this.sprite]), this.x, this.y, this.width, this.height);
+		} else {
+			ctx.fillStyle = this.color;
+			ctx.fillRect(this.x, this.y, this.width, this.height);
+		}
+
+	}
+}
+
+class Creature extends Rectangle {
+	constructor(x, y, width, height, color, spriteList) {
+		super(x, y, width, height, color);
+		this.spriteList = spriteList;
+		this.xVel = 3;
+		this.yVel = 0;
+		this.jumpHeight = 8;
+		this.gravity = 0.5;
+		this.inAir = false;
+		this.keysDown = [0, 0, 1, 0];
+		this.type = "Creature";
+	}
+
+	move() {
+		this.chooseDirection();
 
 		//update yVel
 		if (this.inAir === true) {
 			this.yVel += this.gravity;
 		}
 
-		//up
-		if (keysDown[1] === 1 && this.inAir === false) {
+		if (this.keysDown[1] === 1 && this.inAir === false) {
 			this.inAir = true;
 			this.yVel = -this.jumpHeight;
 			this.gravity = 0.5;
@@ -95,9 +116,8 @@ class Rectangle { //TODO: move to separate file
 		if (other === false) {
 			this.inAir = true;
 			this.gravity = 0.5;
-	  } else {
+		} else {
 				if (this.y > other.y) { //touching ceiling
-					console.log('Touched ceiling!' + this.y + other.y);
 					this.setY(other.y + other.height);
 					this.yVel = 0;
 				} else { //on ground
@@ -107,20 +127,21 @@ class Rectangle { //TODO: move to separate file
 		} else {
 			other = (new Rectangle (this.x, this.y + 0.1, this.width, this.height)).checkCollision();
 			if (other === false) {
-				console.log('Starting to fall');
 				this.inAir = true;
 				this.gravity = 0.5;
-		  }
+			}
 
 		}
 
-		if (keysDown[0] === 1) { //left
+		if (this.keysDown[0] === 1) { //left
 			this.xVel = -Math.abs(this.xVel)
-		} else if (keysDown[2] === 1) { //right
+			this.sprite = 0;
+		} else if (this.keysDown[2] === 1) { //right
 			this.xVel = Math.abs(this.xVel)
+			this.sprite = 1;
 		}
 
-		if (keysDown[0] || keysDown[2]) {
+		if (this.keysDown[0] || this.keysDown[2]) {
 			other = (new Rectangle (this.x + this.xVel, this.y, this.width, this.height)).checkCollision();
 			if (other !== false) if (this.xVel > 0) this.setX(other.x - this.width); else this.setX(other.x + other.width);
 			else {
@@ -130,36 +151,56 @@ class Rectangle { //TODO: move to separate file
 			}
 		}
 
-
 		if (this.inAir === true) {
 			this.setY(this.y + this.yVel);
 		}
-
-		if (this.checkCollision()) { //TODO: figure out what to do when this happens :s Currently happens when a block gets inside of you
-			console.log('p1 is stuck in a rect at ' + this.checkCollision().x + ", " + this.checkCollision().y);
-		}
-
 	}
 
-  touchGround(other) {
-    this.setY(other.y - this.height);
-    this.yVel = 0;
-    this.inAir = false;
-    this.gravity = 0;
-  }
+	touchGround(other) {
+		this.setY(other.y - this.height);
+		this.yVel = 0;
+		this.inAir = false;
+		this.gravity = 0;
+	}
 
-	render() {
-		if (this.sprite) {
-			ctx.drawImage(document.getElementById(this.spriteList[this.sprite]), this.x, this.y, this.width, this.height);
+	chooseDirection() {
+		//change directions when hitting a wall
+		if (new Rectangle(this.x + this.xVel, this.y, this.width, this.height).checkCollision() !== false) {
+			[this.keysDown[0], this.keysDown[2]] = [this.keysDown[2], this.keysDown[0]]; //swaps the two variables
+		}
+
+		if (Math.floor(Math.random() * 100) === 0) {
+			this.keysDown[1] = 1;
 		} else {
-			ctx.fillStyle = this.color;
-			ctx.fillRect(this.x, this.y, this.width, this.height);
+			this.keysDown[1] = 0;
 		}
 
 	}
 }
 
+class Player extends Creature {
+	constructor(x, y, width, height, color, spriteList) {
+		super(x, y, width, height, color, spriteList);
+		this.type = "Player";
+		this.keysDown = [];
+	}
+
+	chooseDirection() {
+
+	}
+
+	die() {
+		this.setX(gridSize);
+		this.setY(gridSize);
+	}
+}
+
 class Spike extends Rectangle {
+	constructor(x, y, width, height, color) {
+		super(x, y, width, height, color);
+		this.deadly = true;
+		this.type = "Spike";
+	}
 
 	render() {
 		ctx.fillStyle = this.color;
@@ -177,9 +218,9 @@ class MovingRectangle extends Rectangle {
 		super(x, y, width, height, color);
 		this.editable = false;
 		this.speed = speed || 1;
-		if (arguments[5] === undefined) {
+		if (arguments[6] === undefined || arguments[7] === undefined) {
 			this.min = new MovingRectangleNode(x, y, width, height, color, this);
-			this.max = new MovingRectangleNode(x + distance - width, y + 32, width, height, color, this);
+			this.max = new MovingRectangleNode(x + 32, y + 32, width, height, color, this);
 		} else {
 			this.min = new MovingRectangleNode(min.x, min.y, width, height, color, this);
 			this.max = new MovingRectangleNode(max.x, max.y, width, height, color, this);
@@ -603,7 +644,8 @@ class Editor {
 	}
 }
 
-var p1 = new Rectangle(20, 20, gridSize * 2, gridSize * 2);
+var p1 = new Player(20, 20, gridSize * 2, gridSize * 2, getRandomColor, ["cowL", "cowR"]);
+var creature = new Creature(20, 20, gridSize * 2, gridSize * 2, getRandomColor(), ["duckL", "duckR"]);
 var editor = new Editor();
 var moving;
 
@@ -616,10 +658,7 @@ window.onload = function() {
 
 	light = new Light(256, 256);
 	light2 = new Light2(512, 512);
-	//moving = new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1);
-	//rectList.push(moving);
-
-	//rectList.push(new MovingRectangle(256, 512, 32, 32, getRandomColor(), 128, 1));
+	//rectList.push(new MovingRectangle(256, 512, 32, 32, getRandomColor(), 2));
 
 	document.addEventListener("keydown", keydown);
 	document.addEventListener("keyup", keyup);
@@ -635,8 +674,9 @@ window.onload = function() {
 function main() {
 	//update
 	p1.move();
+	creature.move();
 	for (var i = 0; i < rectList.length; i++) {
-		if (rectList[i] instanceof MovingRectangle) {
+		if (rectList[i].type === "MovingRectangle") {
 			rectList[i].act();
 		}
 	}
@@ -652,7 +692,8 @@ function main() {
 	ctx.globalAlpha = 0.5;
 	editor.shadow.render(); //TODO cleanup
 	ctx.globalAlpha = 1;
-	drawPlayer();
+	p1.render();
+	creature.render();
 	drawMenu();
 	//editor.showColorPalette();
 	//light.render();
@@ -690,15 +731,6 @@ function drawGrid() {
 	ctx.strokeStyle = "#000000";
 
 };
-
-function drawPlayer() {
-	if (p1.dir === 0) {
-		ctx.drawImage(document.getElementById("cowL"), p1.x, p1.y, p1.width, p1.height);
-  }
-	else if (p1.dir === 1 || p1.dir === undefined) {
-		ctx.drawImage(document.getElementById("cowR"), p1.x, p1.y, p1.width, p1.height);
-  }
-}
 
 function drawMenu() {
 	//add rectangles to list if first time TODO move to load
@@ -739,10 +771,10 @@ function drawMenu() {
 
 function keydown(e) {
 	//move character
-	if (e.keyCode === 37 || e.keyCode === 65) { keysDown[0] = 1; p1.dir = 0; } //left or a
-	if (e.keyCode === 38 || e.keyCode === 87) keysDown[1] = 1; //up or w
-	if (e.keyCode === 39 || e.keyCode === 68) { keysDown[2] = 1; p1.dir = 1; } //right or d
-	if (e.keyCode === 40 || e.keyCode === 83) keysDown[3] = 1; //down or s
+	if (e.keyCode === 37 || e.keyCode === 65) p1.keysDown[0] = 1; //left or a
+	if (e.keyCode === 38 || e.keyCode === 87) p1.keysDown[1] = 1; //up or w
+	if (e.keyCode === 39 || e.keyCode === 68) p1.keysDown[2] = 1; //right or d
+	if (e.keyCode === 40 || e.keyCode === 83) p1.keysDown[3] = 1; //down or s
 	if (e.keyCode === 16) keysDown[4] = 1; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.xVel += 1;
@@ -751,10 +783,10 @@ function keydown(e) {
 
 function keyup(e) {
 	//move character
-	if (e.keyCode === 37 || e.keyCode === 65) keysDown[0] = 0;
-	if (e.keyCode === 38 || e.keyCode === 87) keysDown[1] = 0;
-	if (e.keyCode === 39 || e.keyCode === 68) keysDown[2] = 0;
-	if (e.keyCode === 40 || e.keyCode === 83) keysDown[3] = 0;
+	if (e.keyCode === 37 || e.keyCode === 65) p1.keysDown[0] = 0;
+	if (e.keyCode === 38 || e.keyCode === 87) p1.keysDown[1] = 0;
+	if (e.keyCode === 39 || e.keyCode === 68) p1.keysDown[2] = 0;
+	if (e.keyCode === 40 || e.keyCode === 83) p1.keysDown[3] = 0;
 	if (e.keyCode === 16) keysDown[4] = 0; //shift
 	//temp for changing speed
 	if (e.keyCode === 187) p1.speed += 1;
@@ -816,7 +848,7 @@ function load(saveKey) {
 
 	if (state === null) { //no save found
 		rectList = [];
-		rectList.push(new Rectangle(0, gridSize * 2, gridSize * 2, gridSize * 2));
+		rectList.push(new Rectangle(0, canvas.height - (gridSize * 2), canvas.width, gridSize * 2));
 		p1.setX(0);
 		p1.setY(0);
 		state = {};
@@ -825,15 +857,15 @@ function load(saveKey) {
 		rectList = [];
 		for (var i = 0; i < state.rectList.length; i++) {
 			var check = state.rectList[i];
-			console.log(state.rectList);
 			if (check.type === "Rectangle") {
 				rectList.push(new Rectangle(check.x, check.y, check.width, check.height, check.color));
 			} else if (check.type === "MovingRectangle") {
 				rectList.push(new MovingRectangle(check.x, check.y, check.width, check.height, check.color, check.speed, check.min, check.max));
+			} else if (check.type === "Spike") {
+				rectList.push(new Spike(check.x, check.y, check.width, check.height, check.color));
 			}
 		}
 	}
-	console.log(rectList);
 }
 
 window.onunload = function() {
