@@ -47,25 +47,23 @@ class Rectangle { //TODO: move to separate file
 	getHeight() { return this.height; }
 
 	checkCollision(other) {
-		if (this.collidable) {
-			if (arguments[0] === undefined) {
-				for (var i = 0; i < rectList.length; i++) {
-			  	if (this.x + this.width > rectList[i].x &&
-			  		this.y + this.height > rectList[i].y &&
-						this.x < rectList[i].x + rectList[i].width &&
-						this.y < rectList[i].y + rectList[i].height) {
-							return rectList[i];
-						}
-
+		if (arguments[0] === undefined) {
+			for (var i = 0; i < rectList.length; i++) {
+		  	if (this.x + this.width > rectList[i].x &&
+		  		this.y + this.height > rectList[i].y &&
+					this.x < rectList[i].x + rectList[i].width &&
+					this.y < rectList[i].y + rectList[i].height) {
+						return rectList[i];
 					}
-			} else {
-				if (this.x + this.width > other.x &&
-					this.y + this.height > other.y &&
-					this.x < other.x + other.width &&
-					this.y < other.y + other.height)
-					return other;
 
-			}
+				}
+		} else {
+			if (this.x + this.width > other.x &&
+				this.y + this.height > other.y &&
+				this.x < other.x + other.width &&
+				this.y < other.y + other.height)
+				return other;
+
 		}
 		return false;
 	}
@@ -226,6 +224,7 @@ class MovingRectangle extends Rectangle {
 			this.max = new MovingRectangleNode(max.x, max.y, width, height, color, this);
 		}
 		this.activeNode = this.max;
+		this.active = true;
 		this.type = "MovingRectangle";
 
 	}
@@ -242,9 +241,10 @@ class MovingRectangle extends Rectangle {
 		} else if (this.x + this.width >= this.max.x + this.max.width) {
 			this.activeNode = this.min;
 		}
-
-		this.setX(this.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
-		this.setY(this.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+		if (this.active && this.min.active && this.max.active) {
+			this.setX(this.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+			this.setY(this.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+		}
 
 	}
 
@@ -273,6 +273,7 @@ class MovingRectangleNode extends Rectangle {
 		rectList.push(this);
 		//this.parent = parent;
 		this.type = "MovingRectangleNode";
+		this.active = true;
 	}
 
 	render() {
@@ -482,7 +483,9 @@ class Editor {
 	}
 
 	setActive(other, e) {
+		this.removeActive();
 		this.active = other;
+		this.active.active = false;
 
 		this.offsetLeft = e.clientX - canvas.offsetLeft - other.x;
 		this.offsetTop = e.clientY - canvas.offsetTop - other.y;
@@ -506,6 +509,7 @@ class Editor {
 				p1.y = this.active.y - p1.height;
 			}
 			this.shadow.color = 'rgba(00, 00, 00, 0)';
+			this.active.active = true;
 			this.active = false;
 		}
 	}
@@ -527,7 +531,7 @@ class Editor {
 
 		//fix where the player is TODO: make it take direction into account
 		if (this.active.checkCollision(p1)) {
-			p1.y = this.active.y - p1.height;
+			//p1.y = this.active.y - p1.height;
 		}
 
 	}
