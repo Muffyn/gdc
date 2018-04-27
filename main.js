@@ -62,7 +62,7 @@ class Rectangle { //TODO: move to separate file
 				this.y + this.height > other.y &&
 				this.x < other.x + other.width &&
 				this.y < other.y + other.height)
-				return other;
+				return true;
 
 		}
 		return false;
@@ -141,11 +141,19 @@ class Creature extends Rectangle {
 
 		if (this.keysDown[0] || this.keysDown[2]) {
 			other = (new Rectangle (this.x + this.xVel, this.y, this.width, this.height)).checkCollision();
-			if (other !== false) if (this.xVel > 0) this.setX(other.x - this.width); else this.setX(other.x + other.width);
-			else {
+			if (other !== false) {
+				if (this.xVel > 0)
+				 	this.setX(other.x - this.width);
+				else
+					this.setX(other.x + other.width);
+			} else {
 				other = (new Rectangle (this.x + this.xVel, this.y + this.yVel, this.width, this.height)).checkCollision();
-				if (other !== false) if (this.xVel > 0) this.setX(other.x - this.width); else this.setX(other.x + other.width);
-				else this.setX(this.x + this.xVel);
+				if (other !== false) {
+					if (this.xVel > 0)
+						this.setX(other.x - this.width);
+					else
+						this.setX(other.x + other.width);
+				} else this.setX(this.x + this.xVel);
 			}
 		}
 
@@ -155,6 +163,9 @@ class Creature extends Rectangle {
 	}
 
 	touchGround(other) {
+		if (other.type == "MovingRectangle") {
+			this.setX(this.x + other.speed);
+		}
 		this.setY(other.y - this.height);
 		this.yVel = 0;
 		this.inAir = false;
@@ -246,6 +257,19 @@ class MovingRectangle extends Rectangle {
 			this.setY(this.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
 		}
 
+		if (this.checkCollision(p1)) {
+			if (this.activeNode === this.min) {
+				p1.setX(this.x - p1.width - 1);
+			} else {
+				p1.setX(this.x + this.width + 1);
+			}
+		}
+		else if (Math.abs(p1.y + p1.height - this.y) < 1 && p1.x + p1.width > this.x && p1.x < this.x + this.width) {
+			p1.setX(p1.getX() + this.speed * Math.cos(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+			p1.setY(p1.getY() + this.speed * Math.sin(Math.atan2(this.activeNode.y - this.y, this.activeNode.x - this.x)));
+		}
+
+
 	}
 
 	render() {
@@ -256,10 +280,10 @@ class MovingRectangle extends Rectangle {
 		ctx.fillStyle = this.color;
 		ctx.fillRect(this.x, this.y, this.width, this.height);
 
-		//if (editor.active === this) {
+		if (editor.active === this) {
 			this.min.render();
 			this.max.render();
-		//}
+		}
 	}
 }
 
@@ -293,13 +317,14 @@ class Light {
 	render() {
 		this.x = p1.x + p1.width / 2;
 		this.y = p1.y + p1.height / 2;
+		var allVertices = [];
 		for (var i = 0; i < rectList.length; i++) {
 
 			var other = rectList[i];
 			var vertices = this.getCorners(other);
 			var edges = [this.getEdge(other, vertices, 0), this.getEdge(other, vertices, 1)];
 
-
+			/*
 			if (edges[0].reached && edges[1].reached) {
 				vertices.push(edges[0], edges[1]);
 				this.handleEdges(edges, vertices);
@@ -317,8 +342,32 @@ class Light {
 				//render the light
 				ctx.fillStyle = "#000000";
 				ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
+			} */
+
+			if (edges[0].reached && edges[1].reached) {
+				vertices.push(edges[0], edges[1]);
+				//this.handleEdges(edges, vertices);
+				for (var j = 0; j < vertices.length; j++) {
+					allVertices.push(vertices[j]);
+				}
 			}
+
 		}
+		this.sortVertices(allVertices, {x:this.x, y:this.y});
+		ctx.beginPath();
+		ctx.moveTo(allVertices[allVertices.length - 1].x, allVertices[allVertices.length - 1].y);
+
+
+		for (var j = 0; j < allVertices.length; j++) {
+			ctx.lineTo(allVertices[j].x, allVertices[j].y);
+			ctx.fillStyle = "#000";
+			ctx.fillText(j, allVertices[j].x, allVertices[j].y)
+		}
+		ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+		ctx.fill();
+		//render the light
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
 	}
 
 		getCorners(other) {
@@ -421,15 +470,20 @@ class Light {
 			}
 		}
 
-		sortVertices(vertices) {
+		sortVertices(vertices, middle) {
 			//find midpoints to compare to
 			var mid = {x: 0, y: 0};
-			for (var j = 0; j < vertices.length; j++) {
-				mid.x += vertices[j].x;
-				mid.y += vertices[j].y;
+			if (middle === undefined) {
+				for (var j = 0; j < vertices.length; j++) {
+					mid.x += vertices[j].x;
+					mid.y += vertices[j].y;
+				}
+				mid.x /= vertices.length;
+				mid.y /= vertices.length;
+			} else {
+				mid.x = middle.x;
+				mid.y = middle.y;
 			}
-			mid.x /= vertices.length;
-			mid.y /= vertices.length;
 
 			//sort by angle
 			vertices.sort(function (a, b) { //shoutout to the docs for showing me this
@@ -700,7 +754,7 @@ function main() {
 	creature.render();
 	drawMenu();
 	//editor.showColorPalette();
-	//light.render();
+	light.render();
 
 
 }
