@@ -13,6 +13,143 @@ var fps = 0, prevFps = 0;
 var prevTime = Date.now();
 var light, light2;
 
+//rectList.push(new Polygon([new Point2D(50, 50), new Point2D(100, 50), new Point2D(50, 100), new Point2D(100, 100)]));
+//var test = new Polygon([new Point2D(50, 50), new Point2D(100, 50), new Point2D(50, 100), new Point2D(100, 100)]); rectList.push(test); editor.active = test;
+//var test2 = new Polygon([new Point2D(70, 50), new Point2D(120, 50), new Point2D(50, 130), new Point2D(110, 100)]); rectList.push(test2); editor.active = test2;
+class Polygon {
+	constructor(vertices) {
+		this._vertices = vertices;
+		this.sortVertices();
+		this.color = getRandomColor();
+	}
+
+	getVertices() { return this._vertices; }
+	setVertices(vertices) {
+		if (vertices.length >= 3) {
+			this.sortVertices();
+		} else {
+			throw new Error("Polygon has less than 3 vertices");
+		}
+	}
+	pushVertex(vertex) {
+		this._vertices.push(vertex);
+		this.sortVertices();
+	}
+
+	sortVertices() {
+		//sort by angle
+		var mid = this.getMidpoint();
+		this._vertices = this._vertices.sort(function (a, b) {
+			return Math.atan2(a.getY() - mid.getY(), a.getX() - mid.getX()) -
+						 Math.atan2(b.getY() - mid.getY(), b.getX() - mid.getX());
+		});
+	}
+
+	getMidpoint() {
+		var midpoint = new Point2D(0, 0);
+
+		for (var i = 0; i < this._vertices.length; i++) {
+			midpoint.setX(midpoint.getX() + this._vertices[i].getX());
+			midpoint.setY(midpoint.getY() + this._vertices[i].getY());
+		}
+		midpoint.setX(midpoint.getX() / this._vertices.length);
+		midpoint.setY(midpoint.getY() / this._vertices.length);
+
+		return midpoint;
+	}
+
+	shift(dx, dy) {
+		this._vertices.forEach(function(vertex) {
+			vertex.shift(dx, dy);
+		});
+	}
+
+	render() {
+		ctx.beginPath();
+		ctx.moveTo(this._vertices[this._vertices.length - 1].getX(),
+							 this._vertices[this._vertices.length - 1].getY());
+		for (var i = 0; i < this._vertices.length; i++) {
+			ctx.lineTo(this._vertices[i].getX(), this._vertices[i].getY());
+		}
+		ctx.closePath();
+		ctx.fillStyle = this.color;
+		ctx.fill();
+	}
+}
+
+class Point2D {
+	constructor(x, y) {
+		this._x = x;
+	 	this._y = y;
+		}
+
+	 getX() { return this._x; }
+	 setX(x) { this._x = x; }
+	 getY() { return this._y; }
+	 setY(y) { this._y = y; }
+
+	 shift(dx, dy) {
+		 this.setX(this.getX() + dx);
+		 this.setY(this.getY() + dy);
+	 }
+
+ }
+
+class Vector2D {
+	constructor(x, y) {
+		this._x = x;
+		this._y = y;
+	}
+
+	getX() { return this._x; }
+	setX(x) { this._x = x; }
+	getY() { return this._y; }
+	setY(y) { this._y = y; }
+
+	toString() {
+		return "x: " + this._x + "; y: " + this._y;
+	}
+
+	normalize() {
+		var length = Math.sqrt(this._x * this._x + this._y + this._y);
+		if (length !== 0) {
+			return new Vector2D(this._x / length, this._y / length);
+		} else {
+			throw new Error("Cannot normalize null Vector2D");
+		}
+	}
+
+	dotProduct(other) {
+		if (other instanceof Vector2D) {
+			return this._x * other._x + this._y * other._y;
+		} else {
+			throw new TypeError("Must call dotProduct on Vector2D");
+		}
+	}
+
+	projectOnto(other) {
+		if (other instanceof Vector2D) {
+			if (other._x === 0 && other._y === 0) {
+				throw new Error("Cannot project onto null Vector2D")
+			}
+			var dot = this.dotProduct(other);
+			return new Vector2D((dot / other._x * other._x + other._y * other._y) * other._x,
+													(dot / other._x * other._x + other._y * other._y) * other._y);
+		} else {
+			throw new TypeError("Must call projectOnto on Vector2D");
+		}
+	}
+
+	leftNormal() {
+		return new Vector2D(this._y, -this._x);
+	}
+
+	rightNormal() {
+		return new Vector2D(-this._y, this._x);
+	}
+
+
+}
 
 class Rectangle { //TODO: move to separate file
 	constructor(x, y, width, height, color) {
@@ -361,8 +498,9 @@ class Light {
 		for (var j = 0; j < allVertices.length; j++) {
 			ctx.lineTo(allVertices[j].x, allVertices[j].y);
 			ctx.fillStyle = "#000";
-			ctx.fillText(j, allVertices[j].x, allVertices[j].y)
+			ctx.fillText(j, allVertices[j].x, allVertices[j].y);
 		}
+		ctx.closePath();
 		ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
 		ctx.fill();
 		//render the light
@@ -702,9 +840,52 @@ class Editor {
 	}
 }
 
+class Editor2 {
+	constructor() {
+		this.active = false;
+	}
+
+	setActive(other, e) {
+		this.removeActive();
+		this.active = other;
+		this.active.active = false;
+
+		this.offsetX = e.clientX - canvas.offsetLeft - other.getX();
+		this.offsetY = e.clientY - canvas.offsetTop - other.getY();
+
+		this.sendElementToTop(this.active);
+	}
+
+	removeActive() {
+		if (this.active !== false) {
+			this.active.active = true;
+			this.active = false;
+		}
+	}
+
+	move(e) {
+		//TODO: make mouse clicking trigger this (need collision first) and take into account offsetX and offsetY
+		this.active.shift(e.clientX - canvas.offsetLeft - this.active.getMidpoint().getX(),
+		 									e.clientY - canvas.offsetTop - this.active.getMidpoint().getY());
+
+
+		//set values for later
+		this.prevX = e.clientX;
+		this.prevY = e.clientY;
+	}
+
+	sendElementToTop(element) {
+		for (var i = 0; i < rectList.length; i++) {
+			if (rectList[i] === element)
+				rectList.splice(0, 0, rectList.splice(i, 1)[0]);
+		}
+	}
+
+}
+
 var p1 = new Player(20, 20, gridSize * 2, gridSize * 2, getRandomColor, ["cowL", "cowR"]);
 var creature = new Creature(20, 20, gridSize * 2, gridSize * 2, getRandomColor(), ["duckL", "duckR"]);
-var editor = new Editor();
+var editor = new Editor2();
 var moving;
 
 window.onload = function() {
@@ -748,7 +929,7 @@ function main() {
 	}
 
 	ctx.globalAlpha = 0.5;
-	editor.shadow.render(); //TODO cleanup
+	//editor.shadow.render(); //TODO cleanup
 	ctx.globalAlpha = 1;
 	p1.render();
 	creature.render();
@@ -874,7 +1055,7 @@ function mousedown(e) {
 }
 
 function mousemove(e) {
-	if (editor.active !== false && editor.held) { //currently dragging something
+	if (editor.active !== false) { //currently dragging something
 		editor.move(e);
 	}
 }
