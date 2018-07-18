@@ -12,9 +12,9 @@ var gridSize = 16;
 var fps = 0, prevFps = 0;
 var prevTime = Date.now();
 var light, light2;
-
-//var test = new Polygon([new Point2D(Math.random() * 300, Math.random() * 100), new Point2D(Math.random() * 100, Math.random() * 300), new Point2D(Math.random() * 100, Math.random() * 100), new Point2D(Math.random() * 300, Math.random() * 300)]); rectList.push(test); editor.active = test;
-//var test2 = new Polygon([new Point2D(70, 50), new Point2D(120, 50), new Point2D(50, 130), new Point2D(110, 100)]); rectList.push(test2); editor.active = test2;
+/*
+var test = new Polygon([new Point2D(Math.random() * 300, Math.random() * 100), new Point2D(Math.random() * 100, Math.random() * 300), new Point2D(Math.random() * 100, Math.random() * 100), new Point2D(Math.random() * 300, Math.random() * 300)]); rectList.push(test); editor.active = test;
+*/
 class Polygon {
 	constructor(vertices) {
 		this._vertices = vertices;
@@ -61,70 +61,61 @@ class Polygon {
 		this._vertices.forEach(function(vertex) {
 			vertex.shift(dx, dy);
 		});
+		this.handleCollisions();
+
 	}
 
-	checkCollision() {
-
-		var displayNormals = [];
-		var listOfCollisions = [];
+	handleCollisions() {
+		this.colliding = false;
 		for (var i = 0; i < rectList.length; i++) {
-			var points = rectList[i].getVertices().slice();
-			points.push(points[0]); //so that it auto wraps around
-			var axes = this.findAllAxes(points);
-
-			for (var j = 1; j < rectList.length; j++) { //loop through each other polygon
-				if (i !== j) { //do not compare self
-					var canStillCollide = true;
-					for (var k = 0; k < axes.length && canStillCollide; k++) { //figure out which goes with and against by taking the dot product of the line between the two
-						var withAxis, againstAxis;
-						var vectorBetweenPolygons = new Vector2D(rectList[i].getMidpoint().getX() - rectList[j].getMidpoint().getX(),
-																									   rectList[i].getMidpoint().getY() - rectList[j].getMidpoint().getY(),
-																									 	 rectList[i].getMidpoint().getX(), rectList[i].getMidpoint().getY());
-
-						//ctx.strokeStyle = getRandomColor();
-						if (axes[k].dotProduct(vectorBetweenPolygons) > 0) {
-							withAxis = this.getProjectedLength(rectList[i], axes[k], -1);
-							againstAxis = this.getProjectedLength(rectList[j], axes[k], 1);
-						} else {
-							withAxis = this.getProjectedLength(rectList[j], axes[k], -1);
-							againstAxis = this.getProjectedLength(rectList[i], axes[k], 1);
-						}
-
-						//vectorBetweenPolygons.projectOnto(axes[k]).render();
-
-						if (withAxis + againstAxis < vectorBetweenPolygons.projectOnto(axes[k]).getLength()) {
-
-							canStillCollide = false;
-						}
-					}
-					if (canStillCollide) {
-						listOfCollisions.push(rectList[i], rectList[j]);
-					}
+			if (rectList[i] !== this) {
+				if (this.checkCollision(rectList[i]) && rectList[i].checkCollision(this)) {
+					this.colliding = true;
 				}
 			}
 		}
-		if (listOfCollisions.length > 0) {
-			console.log("Colliding");
-		} else {
-			console.log(" ");
-		}
-
 	}
 
-	findAllAxes(points) {
+	checkCollision(other) {
+		var axes = this.findAllAxes(this.getVertices());
+		return this.checkAxes(axes, other); //TODO: should return the vector that will fix the collision
+	}
+
+	findAllAxes(vertices) {
+		var points = vertices.slice(); //new array that wraps around
+		points.push(points[0]);
 		var axes = [];
 		for (var i = 0; i < points.length - 1; i++) {
 			var midpoint = new Point2D(points[i].getMiddle(points[i + 1]).getX(), points[i].getMiddle(points[i + 1]).getY()); //find vector origin
 			var theta = points[i].getAngleTo(points[i + 1]); //find vector angle
-			var halfVector = new Vector2D(500 * Math.cos(theta), 500 * Math.sin(theta), midpoint.getX(), midpoint.getY()); //find parallel vector
-			var axis = halfVector; //halfVector.rightNormal(); //find normal vector
-			//axis.render();
-			axes.push(axis); //visually display normals
+			var halfVector = new Vector2D(Math.cos(theta), Math.sin(theta)); //find parallel vector
+			axes.push(halfVector.rightNormal()); //find normal vector
 		}
 		return axes;
 	}
 
-	getProjectedLength(poly, axis, direction) {
+	checkAxes(axes, other) {
+		for (var i = 0; i < axes.length; i++) {
+			var withAxis, againstAxis;
+			var vectorBetweenPolygons = new Vector2D(this.getMidpoint().getX() - other.getMidpoint().getX(),
+																							 this.getMidpoint().getY() - other.getMidpoint().getY());
+
+			if (axes[i].dotProduct(vectorBetweenPolygons) > 0) {
+				withAxis = this.getBestProjection(this, axes[i], -1);
+				againstAxis = this.getBestProjection(other, axes[i], 1);
+			} else {
+				withAxis = this.getBestProjection(other, axes[i], -1);
+				againstAxis = this.getBestProjection(this, axes[i], 1);
+			}
+
+			if (withAxis.getLength() + againstAxis.getLength() < vectorBetweenPolygons.projectOnto(axes[i]).getLength()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	getBestProjection(poly, axis, direction) {
 		var points = poly.getVertices().slice();
 
 		points = points.sort(function(a, b) { //sort by dot product
@@ -137,19 +128,13 @@ class Polygon {
 		});
 
 		if (direction === 1) {
-			var temp = new Vector2D(points[points.length - 1].getX() - poly.getMidpoint().getX(),
-													points[points.length - 1].getY() - poly.getMidpoint().getY(),
-											   	poly.getMidpoint().getX(), poly.getMidpoint().getY())
-													.projectOnto(axis)//.getLength();
-																temp.render();
-																return temp.getLength();
+			return new Vector2D(points[points.length - 1].getX() - poly.getMidpoint().getX(),
+													points[points.length - 1].getY() - poly.getMidpoint().getY())
+													.projectOnto(axis);
 		} else {
-			var temp = new Vector2D(points[0].getX() - poly.getMidpoint().getX(),
-													points[0].getY() - poly.getMidpoint().getY(),
-												  poly.getMidpoint().getX(), poly.getMidpoint().getY())
-													.projectOnto(axis)//.getLength();
-			temp.render();
-			return temp.getLength();
+			return new Vector2D(points[0].getX() - poly.getMidpoint().getX(),
+													points[0].getY() - poly.getMidpoint().getY())
+													.projectOnto(axis);
 		}
 	}
 
@@ -163,7 +148,10 @@ class Polygon {
 		ctx.closePath();
 		ctx.fillStyle = this.color;
 		ctx.fill();
-		this.checkCollision();
+		if (this.colliding) {
+			ctx.fillStyle = "#000";
+			ctx.fillText("X", this.getMidpoint().getX(), this.getMidpoint().getY());
+		}
 	}
 }
 
@@ -1162,7 +1150,12 @@ function keyup(e) {
 
 }
 
-function click(e) {
+function click(e) { /*
+	if (editor.active !== false) {
+		var other = new Polygon([new Point2D(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop),
+														new Point2D(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop),
+														new Point2D(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop)]);
+	}*/
 }
 
 function mousedown(e) {
